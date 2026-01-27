@@ -1,0 +1,17 @@
+annotated-types==0.7.0
+colorama==0.4.6
+iniconfig==2.3.0
+numpy==2.4.1
+packaging==26.0
+pandas==3.0.0
+pluggy==1.6.0
+pydantic==2.12.5
+pydantic_core==2.41.5
+Pygments==2.19.2
+pytest==9.0.2
+python-dateutil==2.9.0.post0
+six==1.17.0
+tqdm==4.67.1
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+tzdata==2025.3

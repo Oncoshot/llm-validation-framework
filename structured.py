@@ -1,6 +1,5 @@
 ﻿from pydantic import BaseModel
 from typing import Any, List, Dict, Optional, Union
-from shared.version_info import version_string
 
 # For all LLM Extracted Value
 # Multi Value: Lists -> Stringified lists'[A, B]' (no quotes if use remove_quotes = True)
@@ -18,7 +17,7 @@ class StructuredGroup(BaseModel):
     fields: List[StructuredField]
 
 class StructuredResult(BaseModel):
-    version: Optional[str] = version_string()
+    version: Optional[str] = None
     batch: Optional[str] = None
     groups: List[StructuredGroup]
 

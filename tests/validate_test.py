@@ -1,9 +1,9 @@
 ﻿import pandas as pd
 import pytest
-import shared.validation as v
-from shared.utils import convert_lists
-from shared.structured import StructuredResult, StructuredField, StructuredGroup 
-from shared.utils import flatten_structured_result
+import validation as v
+from utils import convert_lists
+from structured import StructuredResult, StructuredField, StructuredGroup 
+from utils import flatten_structured_result
 pd.options.display.width = 0
 
 _CASES = [
@@ -251,8 +251,6 @@ def test_validate_basic_no_confidence():
         'color', 'Res: color', 'Res: color confidence', 'Res: color justification',
         'Cor: color', 'Inc: color', 'Mis: color', 'Spu: color', 
         'Cor: color items', 'Inc: color items', 'Mis: color items', 'Spu: color items', 
-        # meta info
-        'Res: version', 'Res: batch',
         # system columns
         'Sys: from cache', 'Sys: exception', 'Sys: time taken'
     ]
@@ -337,7 +335,6 @@ def test_process_all_with_cases():
         'flag', 'Res: flag', 'Res: flag confidence', 'Res: flag justification',
         'fruits', 'Res: fruits', 'Res: fruits confidence', 'Res: fruits justification',
         'color', 'Res: color', 'Res: color confidence', 'Res: color justification',
-        'Res: version', 'Res: batch',
         'Sys: from cache', 'Sys: exception', 'Sys: time taken'
     ]
     assert list(res_df.columns) == expected_columns
@@ -488,9 +485,7 @@ def test_validate_with_none_structure_callback():
         # color group (non-binary)
         'color', 'Res: color', 'Res: color confidence', 'Res: color justification',
         'Cor: color', 'Inc: color', 'Mis: color', 'Spu: color', 
-        'Cor: color items', 'Inc: color items', 'Mis: color items', 'Spu: color items', 
-        # meta info
-        'Res: version', 'Res: batch'
+        'Cor: color items', 'Inc: color items', 'Mis: color items', 'Spu: color items'
     ]
     assert list(res_df.columns) == expected_columns
 

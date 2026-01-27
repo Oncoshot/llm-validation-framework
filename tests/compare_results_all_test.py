@@ -1,7 +1,7 @@
 ﻿import math
 import pandas as pd
 import pytest
-import shared.validation as v
+import validation as v
 pd.options.display.width = 0
 
 def get_test_df(addconfidence):
