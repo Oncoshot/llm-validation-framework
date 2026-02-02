@@ -1,0 +1,7 @@
+﻿Patient ID,Comment,First Primary Diagnosis,Res: First Primary Diagnosis,First Primary Histology,Res: First Primary Histology,Treatment Drugs,Res: Treatment Drugs,Test Results,Res: Test Results
+1,Correct Extraction - item was extracted correctly,Colorectal Cancer,Colorectal Cancer,Adenocarcinoma,Adenocarcinoma,['XELOX'],['XELOX'],['ER: Positive'],['ER: Positive']
+2,Incorrect Extraction - for single item field: item was extracted incorrectly; for list item field: not applicable,Colorectal Cancer,Gallbladder Cancer,Adenocarcinoma,Squamous cell carcinoma,[],[],[],[]
+3,"Spurious Extraction - document has no information about the field, nevertheless it was extracted",-,Colorectal Cancer,-,Adenocarcinoma,[],['XELOX'],[],['ER: Positive']
+4,"Missing Extraction - document has information about the field, it was not extracted",Colorectal Cancer,-,Adenocarcinoma,-,['XELOX'],[],['ER: Positive'],[]
+5,Empty - document has no information about the field and nothing was extracted,-,-,-,-,[],[],[],[]
+6,"Lists overlap: document has information about list item field, it was extracted but some items are missing and some items are spurious",-,-,-,-,"['Docetaxel', 'Gemcitabine']","['Docetaxel', 'XELOX']","['ER: Positive', 'HER2: Positive', 'PR: Negative']","['ER: Positive', 'HER2: Positive', 'TMB: Low', 'KRAS: G12A']"
