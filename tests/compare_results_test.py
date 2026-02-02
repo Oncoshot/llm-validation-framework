@@ -1,5 +1,5 @@
 from numpy import nan
-import validation as v
+import src.validation as v
 import pytest
 import math
 

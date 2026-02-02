@@ -8,7 +8,7 @@ import time
 import os
 import concurrent.futures as cf
 from tqdm import tqdm
-from utils import convert_lists, flatten_structured_result
+from src.utils import convert_lists, flatten_structured_result
 
 def compare_results_binary(expected, actual):
     """Compares boolean labels and returns confusion matrix counts."""

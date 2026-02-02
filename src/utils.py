@@ -1,6 +1,6 @@
 from typing import Any, List, Dict, Optional, Union
 from ast import literal_eval
-from structured import StructuredResult
+from src.structured import StructuredResult
 import pandas as pd
 import re
 import json
