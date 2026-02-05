@@ -1,7 +1,15 @@
-﻿Patient ID,Comment,First Primary Diagnosis,Res: First Primary Diagnosis,First Primary Histology,Res: First Primary Histology,Treatment Drugs,Res: Treatment Drugs,Test Results,Res: Test Results
-1,Correct Extraction - item was extracted correctly,Colorectal Cancer,Colorectal Cancer,Adenocarcinoma,Adenocarcinoma,['XELOX'],['XELOX'],['ER: Positive'],['ER: Positive']
-2,Incorrect Extraction - for single item field: item was extracted incorrectly; for list item field: not applicable,Colorectal Cancer,Gallbladder Cancer,Adenocarcinoma,Squamous cell carcinoma,[],[],[],[]
-3,"Spurious Extraction - document has no information about the field, nevertheless it was extracted",-,Colorectal Cancer,-,Adenocarcinoma,[],['XELOX'],[],['ER: Positive']
-4,"Missing Extraction - document has information about the field, it was not extracted",Colorectal Cancer,-,Adenocarcinoma,-,['XELOX'],[],['ER: Positive'],[]
-5,Empty - document has no information about the field and nothing was extracted,-,-,-,-,[],[],[],[]
-6,"Lists overlap: document has information about list item field, it was extracted but some items are missing and some items are spurious",-,-,-,-,"['Docetaxel', 'Gemcitabine']","['Docetaxel', 'XELOX']","['ER: Positive', 'HER2: Positive', 'PR: Negative']","['ER: Positive', 'HER2: Positive', 'TMB: Low', 'KRAS: G12A']"
+﻿Patient ID,Comment,Has metastasis,Res: Has metastasis,First Primary Diagnosis,Res: First Primary Diagnosis,First Primary Histology,Res: First Primary Histology,Treatment Drugs,Res: Treatment Drugs,Test Results,Res: Test Results
+1,Binary Field: True Positive,TRUE,TRUE,,,,,,,,
+2,Binary Field: True Negative,FALSE,FALSE,,,,,,,,
+3,Binary Field: False Positive,FALSE,TRUE,,,,,,,,
+4,Binary Field: False Negative,TRUE,FALSE,,,,,,,,
+5,Single Field: Correct Extraction ,,,Colorectal Cancer,Colorectal Cancer,Adenocarcinoma,Adenocarcinoma,,,,
+6,Single Field: Incorrect Extraction,,,Colorectal Cancer,Gallbladder Cancer,Adenocarcinoma,Squamous cell carcinoma,,,,
+7,Single Field: Missing Extraction,,,Colorectal Cancer,-,Adenocarcinoma,-,,,,
+8,Single Field: Spurious Extraction,,,-,Colorectal Cancer,-,Adenocarcinoma,,,,
+9,Single Field: Correct Empty Extraction,,,-,-,-,-,,,,
+10,List Field: Correct Extraction ,,,,,,,['XELOX'],['XELOX'],['ER: Positive'],['ER: Positive']
+11,List Field: Spurious Extraction,,,,,,,[],['XELOX'],[],['ER: Positive']
+12,List Field: Missing Extraction,,,,,,,['XELOX'],[],['ER: Positive'],[]
+13,List Field: Correct Empty Extraction,,,,,,,[],[],[],[]
+14,List Field: Mixed Extraction,,,,,,,"['Docetaxel', 'Gemcitabine']","['Docetaxel', 'XELOX']","['ER: Positive', 'HER2: Positive', 'PR: Negative']","['ER: Positive', 'HER2: Positive', 'TMB: Low', 'KRAS: G12A']"

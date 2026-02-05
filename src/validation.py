@@ -78,7 +78,7 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
     # Determine which fields are binary by looking at the unique non-empty expected values.
     binary_fields = {}
     for field in fields:
-        binary_fields[field] = pd.api.types.is_bool_dtype(df[field])
+        binary_fields[field] = pd.api.types.is_bool_dtype(pd.api.types.infer_dtype(df[field].dropna()))
 
     # Create a list to store modified rows
     modified_rows = []
@@ -104,8 +104,8 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
                 res = {key: len(value) if value is not None else None for key, value in res_items.items()}
 
                 if isinstance(expected, list) or isinstance(actual, list):
-                    # если сравниваем списки то вычисляем метрики на уровне отдельного кейса (для скаляров не имеет смысла)
-                    TN_case = None # TN для списков не определён
+                    # if comparing lists then calculate metrics at the individual case level (for scalars it doesn't make sense)
+                    TN_case = None # TN for lists is not defined
 
                     precision, recall, f1_score, f2_score, specificity = calculate_metrics(
                         res['Correct'], res['Partial'], res['Incorrect'], res['Spurious'], res['Missing'], TN_case
@@ -117,12 +117,12 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
                     row['F2 score: ' + field] = f2_score
 
                     if not parents:
-                        #we dont want useless columns if no parents anyway
+                        #we don't want useless columns if no parents anyway
                         del res['Incorrect'] #incorrect appear only if parent mismatch (only for lists)
                         del res_items['Incorrect']
 
                 if not parents:
-                    #we dont want useless columns if no parents anyway
+                    #we don't want useless columns if no parents anyway
                     del res['Partial']      #partial appear only if parent match
                     del res_items['Partial']
 
@@ -219,7 +219,7 @@ def get_metrics(res_df, fields):
     """
     metrics_list = []  # Accumulate rows as dictionaries instead of modifying DataFrame
 
-    total_cases = len(res_df.index)
+    labeled_cases = len(res_df.index)
     
     # Handle case where 'Sys: exception' column doesn't exist
     if 'Sys: exception' in res_df.columns:
@@ -233,8 +233,8 @@ def get_metrics(res_df, fields):
     metrics_list.append({
         'field': 'exceptions',
         'confidence': None,
-        'total cases': total_cases,
-        'positive cases': exceptions_no,
+        'labeled cases': labeled_cases,
+        'field-present cases': exceptions_no,
         'TP': None, 'TN': None, 'FP': None, 'FN': None,
         'precision (micro)': None, 'recall (micro)': None, 'F1 score (micro)': None, 'F2 score (micro)': None, 'accuracy (micro)': None, 'specificity (micro)': None,
         'cor': None, 'inc': None, 'mis': None, 'spu': None, 'par': None,
@@ -268,8 +268,8 @@ def get_metrics(res_df, fields):
             if field_df.empty and confidence_level != 'Overall':
                 continue  # Skip empty confidence groups
 
-            total_cases = field_df[field].count()
-            positive_cases = field_df[field].apply(lambda x: not (is_scalar_empty(x) or x == [])).sum()
+            labeled_cases = field_df[field].count()
+            field_present_cases = field_df[field].apply(lambda x: not (is_scalar_empty(x) or x == [])).sum()
 
             TP = TN = FP = FN = \
             cor = inc = mis = spu = par = \
@@ -314,7 +314,7 @@ def get_metrics(res_df, fields):
                     TN_field = None
                 else:
                     # scalar field
-                    TN_field = total_cases - positive_cases - spu
+                    TN_field = labeled_cases - field_present_cases - spu
                 
                 precision_micro, recall_micro, f1_score_micro, f2_score_micro, specificity_micro = calculate_metrics(
                     cor, par or 0, inc or 0, spu, mis, TN_field
@@ -324,8 +324,8 @@ def get_metrics(res_df, fields):
             metrics_list.append({
                 'field': field,
                 'confidence': confidence_level,
-                'total cases': total_cases,
-                'positive cases': positive_cases,
+                'labeled cases': labeled_cases,
+                'field-present cases': field_present_cases,
                 "TP": TP,
                 "TN": TN,
                 "FP": FP,
@@ -349,6 +349,10 @@ def get_metrics(res_df, fields):
 
     # Convert the list to a DataFrame at the end
     metrics = pd.DataFrame(metrics_list)
+
+    # Drop confidence column if it only contains 'Overall' or NaN values
+    if 'confidence' in metrics.columns and set(metrics['confidence'].dropna()) <= {'Overall'}: 
+        metrics.drop('confidence', axis=1, inplace=True)
 
     metrics.dropna(axis=1, how="all", inplace=True)
 

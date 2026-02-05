@@ -1,6 +1,0 @@
-field,confidence,total cases,positive cases,precision (micro),recall (micro),F1 score (micro),F2 score (micro),specificity (micro),cor,inc,mis,spu,precision (macro),recall (macro),F1 score (macro),F2 score (macro)
-exceptions,,6,,,,,,,,,,,,,,
-First Primary Diagnosis,Overall,6,3.0,0.3333333333333333,0.3333333333333333,0.3333333333333333,0.3333333333333333,0.6666666666666666,1.0,1.0,1.0,1.0,,,,
-First Primary Histology,Overall,6,3.0,0.3333333333333333,0.3333333333333333,0.3333333333333333,0.3333333333333333,0.6666666666666666,1.0,1.0,1.0,1.0,,,,
-Treatment Drugs,Overall,6,3.0,0.5,0.5,0.5,0.5,,2.0,,2.0,2.0,0.5,0.5,0.375,0.375
-Test Results,Overall,6,3.0,0.5,0.6,0.5454545454545454,0.5769230769230769,,3.0,,2.0,3.0,0.5,0.5555555555555555,0.3928571428571429,0.40625

@@ -276,8 +276,8 @@ def test_validate_basic_no_confidence():
     assert 'confidence' in metrics_df.columns
 
     # --- Metrics checks for Overall confidence level ---
-    assert _metric(metrics_df, 'flag', 'total cases') == 8
-    assert _metric(metrics_df, 'flag', 'positive cases') == 8
+    assert _metric(metrics_df, 'flag', 'labeled cases') == 8
+    assert _metric(metrics_df, 'flag', 'field-present cases') == 8
     assert _metric(metrics_df, 'flag', 'TP') == 2
     assert _metric(metrics_df, 'flag', 'FP') == 1
     assert _metric(metrics_df, 'flag', 'FN') == 3
@@ -287,8 +287,8 @@ def test_validate_basic_no_confidence():
     assert _metric(metrics_df, 'flag', 'F1 score (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'flag', 'accuracy (micro)') == pytest.approx(0.5)
 
-    assert _metric(metrics_df, 'fruits', 'total cases') == 7
-    assert _metric(metrics_df, 'fruits', 'positive cases') == 5
+    assert _metric(metrics_df, 'fruits', 'labeled cases') == 7
+    assert _metric(metrics_df, 'fruits', 'field-present cases') == 5
     assert _metric(metrics_df, 'fruits', 'cor') == 4
     assert _metric(metrics_df, 'fruits', 'mis') == 3
     assert _metric(metrics_df, 'fruits', 'spu') == 3
@@ -296,8 +296,8 @@ def test_validate_basic_no_confidence():
     assert _metric(metrics_df, 'fruits', 'recall (micro)') == pytest.approx(4/7)
     assert _metric(metrics_df, 'fruits', 'F1 score (micro)') == pytest.approx(4/7)
 
-    assert _metric(metrics_df, 'color', 'total cases') == 7
-    assert _metric(metrics_df, 'color', 'positive cases') == 4
+    assert _metric(metrics_df, 'color', 'labeled cases') == 7
+    assert _metric(metrics_df, 'color', 'field-present cases') == 4
     assert _metric(metrics_df, 'color', 'cor') == 2
     assert _metric(metrics_df, 'color', 'inc') == 1
     assert _metric(metrics_df, 'color', 'mis') == 1
@@ -306,7 +306,7 @@ def test_validate_basic_no_confidence():
     assert _metric(metrics_df, 'color', 'recall (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'color', 'F1 score (micro)') == pytest.approx(0.5)
 
-    assert metrics_df.loc[metrics_df.field == 'exceptions', 'positive cases'].iloc[0] == 0
+    assert metrics_df.loc[metrics_df.field == 'exceptions', 'field-present cases'].iloc[0] == 0
 
 def test_process_all_with_cases():
     """
@@ -512,8 +512,8 @@ def test_validate_with_none_structure_callback():
     assert 'confidence' in metrics_df.columns
 
     # --- Metrics checks - should match test_validate_basic_no_confidence ---
-    assert _metric(metrics_df, 'flag', 'total cases') == 8
-    assert _metric(metrics_df, 'flag', 'positive cases') == 8
+    assert _metric(metrics_df, 'flag', 'labeled cases') == 8
+    assert _metric(metrics_df, 'flag', 'field-present cases') == 8
     assert _metric(metrics_df, 'flag', 'TP') == 2
     assert _metric(metrics_df, 'flag', 'FP') == 1
     assert _metric(metrics_df, 'flag', 'FN') == 3
@@ -523,8 +523,8 @@ def test_validate_with_none_structure_callback():
     assert _metric(metrics_df, 'flag', 'F1 score (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'flag', 'accuracy (micro)') == pytest.approx(0.5)
 
-    assert _metric(metrics_df, 'fruits', 'total cases') == 7
-    assert _metric(metrics_df, 'fruits', 'positive cases') == 5
+    assert _metric(metrics_df, 'fruits', 'labeled cases') == 7
+    assert _metric(metrics_df, 'fruits', 'field-present cases') == 5
     assert _metric(metrics_df, 'fruits', 'cor') == 4
     assert _metric(metrics_df, 'fruits', 'mis') == 3
     assert _metric(metrics_df, 'fruits', 'spu') == 3
@@ -532,8 +532,8 @@ def test_validate_with_none_structure_callback():
     assert _metric(metrics_df, 'fruits', 'recall (micro)') == pytest.approx(4/7)
     assert _metric(metrics_df, 'fruits', 'F1 score (micro)') == pytest.approx(4/7)
 
-    assert _metric(metrics_df, 'color', 'total cases') == 7
-    assert _metric(metrics_df, 'color', 'positive cases') == 4
+    assert _metric(metrics_df, 'color', 'labeled cases') == 7
+    assert _metric(metrics_df, 'color', 'field-present cases') == 4
     assert _metric(metrics_df, 'color', 'cor') == 2
     assert _metric(metrics_df, 'color', 'inc') == 1
     assert _metric(metrics_df, 'color', 'mis') == 1
