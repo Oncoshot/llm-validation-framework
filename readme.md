@@ -211,7 +211,7 @@ validate(
 - **Cache statistics** - Check `Sys: from cache` column in results to monitor cache hits
 
 ### Confidence Analysis  
-The framework automatically detects `Res: {Field} confidence` columns and generates:
+When LLM inference returns both extracted fields and their associated confidence levels, the framework automatically detects `Res: {Field} confidence` columns and generates:
 - Separate metrics for each unique confidence level found in your data
 - Overall metrics aggregating across all confidence levels
 - Useful for setting confidence thresholds and analyzing prediction reliability
