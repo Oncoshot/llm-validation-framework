@@ -6,7 +6,7 @@ A comprehensive Python framework for evaluating LLM-extracted structured data ag
 
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
-- **Comprehensive metrics** - Precision, recall, F1/F2, accuracy with both micro and macro aggregation
+- **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity with both micro and macro aggregation
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
 - **Production ready** - Parallel processing, intelligent caching, detailed progress tracking
 
@@ -259,3 +259,7 @@ llm-validation-framework/
 | **"Duplicate index"** | Use `df.reset_index(drop=True)` or ensure your DataFrame index has unique values |
 | **Import/dependency errors** | Run `pip install -r requirements.txt` and verify Python 3.11+ |
 | **Slow performance** | Enable parallel processing with `max_workers=None` and `use_threads=True` for LLM API calls |
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
