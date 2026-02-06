@@ -23,8 +23,15 @@ python runme.py
 ```
 
 Processes the included [samples.csv](samples.csv) (14 test cases covering all validation scenarios) and outputs timestamped results to `validation_results/samples/`:
-- **Results CSV** - Row-by-row comparison with confusion matrix counts and item-level details
-- **Metrics CSV** - Aggregated performance statistics with confidence breakdowns
+
+- **[Results CSV](validation_results/samples/2026-02-06%2012-27-38%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
+- **[Metrics CSV](validation_results/samples/2026-02-06%2012-27-38%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
+
+| Rows | Field Type | Test Scenarios |
+|------|------------|----------------|
+| **1-4** | Binary (`Has metastasis`) | True Positive, True Negative, False Positive, False Negative |
+| **5-9** | Scalar (`Diagnosis`, `Histology`) | Correct, incorrect, missing, spurious, and empty extractions |
+| **10-14** | List (`Treatment Drugs`, `Test Results`) | Perfect match, spurious items, missing items, correct empty, mixed results |
 
 ## 📊 Usage Modes
 
@@ -93,21 +100,9 @@ results_df, metrics_df = validate(
 | **List** | Multiple values | `["Drug A", "Drug B"]` <br> `"['Item1', 'Item2']"` | `["Drug A"]` <br> `[]` |
 
 ### Special Value Handling
-- **`"-"`** = This case was labeled as "No information available in source document" for the field
+- **`"-"`** = Labeled as "No information is available in the source document"
 - **`null/empty`** = Field not labeled/evaluated 
 - **Lists** - Can be Python lists `["a", "b"]` or stringified `"['a', 'b']"` (auto-converted)
-
-## 🗂️ Demo Dataset Walkthrough
-
-The included [samples.csv](samples.csv) demonstrates all validation scenarios across 14 carefully designed test cases:
-
-| Rows | Field Type | Test Scenarios |
-|------|------------|----------------|
-| **1-4** | Binary (`Has metastasis`) | True Positive, True Negative, False Positive, False Negative |
-| **5-9** | Scalar (`Diagnosis`, `Histology`) | Correct, incorrect, missing, spurious, and empty extractions |
-| **10-14** | List (`Treatment Drugs`, `Test Results`) | Perfect match, spurious items, missing items, correct empty, mixed results |
-
-**📋 View sample outputs:** [Results CSV](validation_results/samples/2026-02-06%2012-27-38%20results.csv) ∣ [Metrics CSV](validation_results/samples/2026-02-06%2012-27-38%20metrics.csv)
 
 ## 📈 Output Files
 
@@ -148,17 +143,25 @@ The framework generates two timestamped CSV files for each validation run:
 **Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `precision/recall/F1/F2 (micro)`, `precision/recall/F1/F2 (macro)`
 
 ## ⚡ Performance Metrics Explained
-
 ### Binary Classification Metrics
 
 For fields with True/False values (e.g., "Has metastasis"):
 
+#### Confusion Matrix Counts
+| Count | Definition | Example |
+|-------|------------|---------|
+| **TP (True Positive)** | Correctly predicted positive | Label: `True`, Prediction: `True` → TP=1 |
+| **TN (True Negative)** | Correctly predicted negative | Label: `False`, Prediction: `False` → TN=1 |
+| **FP (False Positive)** | Incorrectly predicted positive | Label: `False`, Prediction: `True` → FP=1 |
+| **FN (False Negative)** | Incorrectly predicted negative | Label: `True`, Prediction: `False` → FN=1 |
+
+#### Binary Classification Formulas
 | Metric | Formula | Meaning |
 |--------|---------|---------|
-| **TP/TN/FP/FN** | Confusion matrix counts | True/False Positive/Negative cases |
 | **Precision** | `TP / (TP + FP)` | Of all positive predictions, how many were correct? |
 | **Recall** | `TP / (TP + FN)` | Of all actual positives, how many were found? |
-
+| **Accuracy** | `(TP + TN) / (TP + TN + FP + FN)` | Overall percentage of correct predictions |
+| **Specificity** | `TN / (TN + FP)` | Of all actual negatives, how many were correctly identified? |
 ### Structured Extraction Metrics
 
 For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
@@ -176,9 +179,18 @@ For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
 | Metric | Formula | Meaning |
 |--------|---------|---------|
 | **Precision** | `Cor / (Cor + Spu + Inc)` | Of all extracted items, how many were correct? |
-| **Recall** | `Cor / (Cor + Mis + Inc)` | Of all labeled items, how many were correctly extracted? |  
+| **Recall** | `Cor / (Cor + Mis + Inc)` | Of all labeled items, how many were correctly extracted? |
 
 **Note:** For scalar fields, Inc (incorrect) is used; for list fields, Inc is typically 0 since items are either correct, missing, or spurious.
+
+The following formulas apply to both binary classification and structured extraction metrics:
+
+| Metric | Formula | Meaning |
+|--------|---------|--------|
+| **F1 Score** | `2 × (P × R) / (P + R)` | Balanced harmonic mean of precision and recall |
+| **F2 Score** | `5 × (P × R) / (4P + R)` | Recall-weighted F-score (emphasizes recall over precision) |
+
+Where P = Precision and R = Recall (calculated differently for each metric type).
 
 ## 🛠️ Advanced Configuration
 
@@ -247,9 +259,3 @@ llm-validation-framework/
 | **"Duplicate index"** | Use `df.reset_index(drop=True)` or ensure your DataFrame index has unique values |
 | **Import/dependency errors** | Run `pip install -r requirements.txt` and verify Python 3.11+ |
 | **Slow performance** | Enable parallel processing with `max_workers=None` and `use_threads=True` for LLM API calls |
-
-### Performance Tips
-- **Processing speed**: Use `max_workers=None` for automatic CPU count detection
-- **I/O optimization**: Set `use_threads=True` when making API calls to LLM services  
-- **Memory efficiency**: Framework automatically caches identical raw text inputs to avoid redundant processing
-- **Progress monitoring**: Built-in progress bars help track validation progress on large datasets
