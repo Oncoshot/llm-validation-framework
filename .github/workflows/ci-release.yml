@@ -40,9 +40,30 @@ jobs:
         run: |
           pytest
 
+  release-preview:
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install semantic-release for preview
+        run: pip install python-semantic-release setuptools-scm build
+
+      - name: Dry-run semantic-release
+        run: semantic-release publish --noop
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release:
     needs: test
-    #if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
