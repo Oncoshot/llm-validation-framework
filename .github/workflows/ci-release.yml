@@ -57,7 +57,7 @@ jobs:
         run: pip install python-semantic-release setuptools-scm build
 
       - name: Dry-run semantic-release
-        run: semantic-release publish --noop
+        run: semantic-release publish --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
