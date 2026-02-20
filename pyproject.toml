@@ -29,10 +29,6 @@ pythonpath = [
   "src",
 ]
 
-#[tool.setuptools_scm]
-#version_scheme = "post-release"
-#local_scheme = "no-local-version"
-
 [tool.semantic_release]
 version_variable = ["src/__init__.py:__version__"]
 version_toml = ["pyproject.toml:project.version"]
@@ -42,5 +38,4 @@ build_command = "pip install build && python -m build"
 upload_to_pypi = true
 upload_to_release = true
 
-# DO NOT COMMIT VERSION FILES
 commit_version_number = true

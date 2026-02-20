@@ -53,25 +53,10 @@ jobs:
 
       - uses: actions/setup-python@v6.2.0
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - run: |
-          pip install python-semantic-release build twine setuptools-scm
-
-#      - name: Setup package version
-#        env:
-#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          semantic-release version
-#
-#      - name: Publish to PyPi
-#        env:
-#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-#        run: |
-#          pip install build
-#          python -m build
-#          semantic-release publish
+          pip install python-semantic-release build twine
 
       - name: Python Semantic Release
         id: release
