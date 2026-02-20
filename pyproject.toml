@@ -20,6 +20,11 @@ classifiers = [
   "Intended Audience :: Developers"
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/Oncoshot/llm-validation-framework"
+"Repository" = "https://github.com/Oncoshot/llm-validation-framework"
+"Bug Tracker" = "https://github.com/Oncoshot/llm-validation-framework/issues"
+
 [tool.setuptools.packages.find]
 where = ["."]
 
