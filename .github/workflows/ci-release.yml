@@ -70,4 +70,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          semantic-release -vv publish
+          pip install build
+          python -m build
+          semantic-release publish
