@@ -8,6 +8,7 @@ description = "Oncoshot LLM validation framework"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+dynamic = ["version"]
 
 classifiers = [
   "Programming Language :: Python :: 3",
