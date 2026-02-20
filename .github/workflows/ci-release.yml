@@ -58,12 +58,11 @@ jobs:
       - run: |
           pip install python-semantic-release build twine setuptools-scm
 
-      - name: Setup package version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          semantic-release version
+#      - name: Setup package version
+#        env:
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          semantic-release version
 
       - name: Publish to PyPi
         env:
