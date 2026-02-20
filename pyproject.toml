@@ -34,6 +34,7 @@ local_scheme = "no-local-version"
 
 [tool.semantic_release]
 branch = "master"
+allow_zero_version = true
 build_command = "python -m build"
 upload_to_pypi = true
 upload_to_release = true
