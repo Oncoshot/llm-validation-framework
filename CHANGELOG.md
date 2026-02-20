@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.3 (2026-02-20)
+
+### Bug Fixes
+
+- Test 3
+  ([`9286b7a`](https://github.com/Oncoshot/llm-validation-framework/commit/9286b7adc09626dffb13843bdf9fb831b8d59564))
+
+
 ## v0.1.2 (2026-02-20)
 
 
