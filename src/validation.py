@@ -8,7 +8,7 @@ import time
 import os
 import concurrent.futures as cf
 from tqdm import tqdm
-from src.utils import convert_lists, flatten_structured_result
+from src.utils import convert_lists, infer_fields
 
 def compare_results_binary(expected, actual):
     """Compares boolean labels and returns confusion matrix counts."""
@@ -823,15 +823,7 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
 
     # Infer fields from columns if both structure_callback and fields are None
     if structure_callback is None and fields is None:
-        # Find columns that have corresponding "Res: " columns
-        res_columns = [col for col in source_df.columns if col.startswith('Res: ')]
-        # Extract the field names by removing the "Res: " prefix
-        inferred_fields = []
-        for res_col in res_columns:
-            field_name = res_col[5:]  # Remove "Res: " prefix
-            # Only include if the base field column exists in the dataframe
-            if field_name in source_df.columns:
-                inferred_fields.append(field_name)
+        inferred_fields = infer_fields(source_df)
         
         if not inferred_fields:
             raise ValueError("Cannot infer fields: no columns found with both base field and corresponding 'Res: ' columns")
