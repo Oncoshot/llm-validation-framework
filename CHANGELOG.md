@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v0.1.4 (2026-02-20)
+
+### Bug Fixes
+
+- Test 4
+  ([`81b1976`](https://github.com/Oncoshot/llm-validation-framework/commit/81b19761f4f4d1629e7a004af9462425ca912e9b))
+
+- Test 5
+  ([`c775a57`](https://github.com/Oncoshot/llm-validation-framework/commit/c775a57d76074f182430439a5e64db6bb6e32190))
+
+- Test 6
+  ([`fa91403`](https://github.com/Oncoshot/llm-validation-framework/commit/fa914032d713629f215ae2bbe21302e978626dc5))
+
+- Test 7
+  ([`afcb8db`](https://github.com/Oncoshot/llm-validation-framework/commit/afcb8db8d56cfa0e488f23906620de7b3b25b885))
+
+- Test 8
+  ([`d1afc03`](https://github.com/Oncoshot/llm-validation-framework/commit/d1afc03df392cf28632eb2f3c410c45507bc8361))
+
+
 ## v0.1.3 (2026-02-20)
 
 ### Bug Fixes
