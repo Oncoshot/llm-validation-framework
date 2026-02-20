@@ -34,7 +34,9 @@ version_scheme = "post-release"
 local_scheme = "no-local-version"
 
 [tool.semantic_release]
-version_variable = ["src/__init__.py:__version__"]
+# version_variable = ["src/__init__.py:__version__"]
+version_variable = []
+version_toml = []
 branch = "master"
 allow_zero_version = true
 build_command = "pip install build && python -m build"

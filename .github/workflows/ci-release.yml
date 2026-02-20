@@ -63,12 +63,24 @@ jobs:
 #          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #        run: |
 #          semantic-release version
+#
+#      - name: Publish to PyPi
+#        env:
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+#        run: |
+#          pip install build
+#          python -m build
+#          semantic-release publish
 
-      - name: Publish to PyPi
+      - name: Release and Publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
+          semantic-release version --no-push 
+      
           pip install build
           python -m build
+
           semantic-release publish
