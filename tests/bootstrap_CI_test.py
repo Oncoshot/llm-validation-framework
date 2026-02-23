@@ -27,8 +27,8 @@ def test_bootstrap_CI_basic():
     
     # Check output format
     assert 'field' in result.columns
-    assert len(result) == 3  # Two fields + exceptions field
-    expected_fields = {'field1', 'field2', 'exceptions'}
+    assert len(result) == 4  # Two fields + exceptions field + N/CI info row
+    expected_fields = {'field1', 'field2', 'exceptions', 'N=100; CI=95%'}
     assert set(result['field']) == expected_fields
     
     # Check that confidence interval columns are present for metrics that exist in our data
@@ -45,7 +45,7 @@ def test_bootstrap_CI_basic():
     
     # Check that means are reasonable (between lower and upper bounds) for non-exception fields
     for _, row in result.iterrows():
-        if row['field'] != 'exceptions':  # Skip exceptions which have mostly NaN values
+        if row['field'] in ['exceptions', 'N=100; CI=95%']:  # Skip exceptions and info row
             for metric in core_metrics:
                 mean_col = f'{metric}: mean'
                 lower_col = f'{metric}: lower'
@@ -118,6 +118,10 @@ def test_bootstrap_CI_binary_field():
         assert f'{metric}: mean' in result.columns
         assert f'{metric}: lower' in result.columns  
         assert f'{metric}: upper' in result.columns
+    
+    # Check that N/CI info row is present
+    info_rows = result[result['field'].str.startswith('N=')]
+    assert len(info_rows) == 1
 
 
 def test_bootstrap_CI_output_format():
@@ -134,7 +138,7 @@ def test_bootstrap_CI_output_format():
     result = v.bootstrap_CI(res_df, ['test_field'], n_bootstrap=10, random_state=42)
     
     # Check that result has the correct format
-    assert len(result) == 2  # One field + exceptions
+    assert len(result) == 3  # One field + exceptions + N/CI info row
     test_field_row = result[result['field'] == 'test_field'].iloc[0]
     assert test_field_row['field'] == 'test_field'
     
@@ -218,4 +222,8 @@ def test_bootstrap_CI_empty_metrics():
     
     # Check that the function completes without errors for this simpler case
     assert 'field' in result.columns
-    assert len(result) >= 1  # At least one field (exceptions) + field1
+    assert len(result) >= 2  # At least exceptions + field1 + N/CI info row
+    
+    # Check that N/CI info row is present
+    info_rows = result[result['field'].str.startswith('N=')]
+    assert len(info_rows) == 1

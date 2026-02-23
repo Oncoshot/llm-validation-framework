@@ -222,7 +222,7 @@ The `bootstrap_CI()` function returns a DataFrame with confidence intervals for 
 
 | Column | Description |
 |--------|-------------|
-| `field` | Field name (including 'exceptions' for system metrics) |
+| `field` | Field name (including 'exceptions' for system metrics and 'N={n}; CI={level}%' for parameters) |
 | `labeled cases` | Number of labeled cases in the dataset |
 | `{metric}: mean` | Bootstrap mean estimate |
 | `{metric}: lower` | Lower bound of confidence interval |
@@ -234,7 +234,10 @@ Example output:
 0  exceptions          1000                       NaN                       NaN                       NaN
 1   diagnosis          1000                      0.82                      0.79                      0.85
 2   treatment          1000                      0.91                      0.88                      0.94
+3  N=5000; CI=95%       NaN                       NaN                       NaN                       NaN
 ```
+
+The final row contains bootstrap parameters for reference: sample size (N) and confidence interval level (CI).
 
 ### Use Cases
 - **Performance assessment**: Quantify uncertainty in reported metrics
