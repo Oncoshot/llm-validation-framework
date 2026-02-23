@@ -997,5 +997,8 @@ def bootstrap_CI(
                 row[f'{col}: upper'] = float(np.percentile(arr, q_hi))
         result_rows.append(row)
 
+    # Add a row at the end with N and CI information
+    result_rows.append({'field': f'N={n_bootstrap}; CI={int(ci*100)}%'})
+
     out_df = pd.DataFrame(result_rows).reset_index(drop=True)
     return out_df
