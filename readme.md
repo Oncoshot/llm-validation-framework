@@ -193,7 +193,7 @@ The following formulas apply to both binary classification and structured extrac
 
 Where P = Precision and R = Recall (calculated differently for each metric type).
 
-## � Bootstrap Confidence Intervals
+## Bootstrap Confidence Intervals
 
 The framework includes statistical confidence interval estimation using non-parametric bootstrap resampling at the case level. This provides uncertainty quantification for all validation metrics.
 
@@ -242,7 +242,7 @@ Example output:
 - **Sample size planning**: Understand precision of estimates with current dataset size
 - **Publication**: Report confidence intervals alongside point estimates
 
-## �🛠️ Advanced Configuration
+## 🛠️ Advanced Configuration
 
 ### Parallel Processing
 ```python
