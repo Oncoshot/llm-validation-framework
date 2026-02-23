@@ -137,6 +137,30 @@ def select_rename_field(field_dict, new_name=None):
         "confidence": field_dict.get("Overall Extraction Confidence Level", "-")
     }
 
+def infer_fields(source_df: pd.DataFrame) -> List[str]:
+    """
+    Infers field names from a DataFrame based on the presence of columns prefixed with "Res: ".
+    This function searches for columns in the input DataFrame whose names start with "Res: ".
+    For each such column, it removes the "Res: " prefix to obtain the base field name.
+    A field name is included in the result only if a column with the base field name also exists in the DataFrame.
+    Args:
+        source_df (pd.DataFrame): The DataFrame from which to infer field names.
+    Returns:
+        List[str]: A list of inferred field names that have both a "Res: " prefixed column and a corresponding base column.
+    """
+
+    # Find columns that have corresponding "Res: " columns
+    res_columns = [col for col in source_df.columns if col.startswith('Res: ')]
+    # Extract the field names by removing the "Res: " prefix
+    inferred_fields = []
+    for res_col in res_columns:
+        field_name = res_col[5:]  # Remove "Res: " prefix
+        # Only include if the base field column exists in the dataframe
+        if field_name in source_df.columns:
+            inferred_fields.append(field_name)
+
+    return inferred_fields
+
 # separate each field from flat dictionary
 def separate_field(dict_result: dict, field_name: str, cleaners: dict[str, callable] = None) -> dict:
     """Build base field dict, apply cleaners only on Extracted Value if provided for this field."""
