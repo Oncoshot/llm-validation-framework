@@ -5,6 +5,7 @@ A comprehensive Python framework for evaluating LLM-extracted structured data ag
 ## ✨ Key Features
 
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
+- **Partial labeling support** - Handle datasets where different cases have labels for different subsets of fields
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
 - **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity with both micro and macro aggregation
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
@@ -107,8 +108,16 @@ results_df, metrics_df = validate(
 
 ### Special Value Handling
 - **`"-"`** = Labeled as "No information is available in the source document"
-- **`null/empty`** = Field not labeled/evaluated 
+- **`null/empty/NaN`** = Field not labeled/evaluated (supports partial labeling where different cases may have labels for different field subsets)
 - **Lists** - Can be Python lists `["a", "b"]` or stringified `"['a', 'b']"` (auto-converted)
+
+### Partial Labeling Support
+The framework supports partial labeling scenarios where:
+- Not every case needs labels for every field
+- Different cases can have labels for different subsets of fields  
+- Missing labels (`null`/`NaN`) are handled gracefully in all metrics calculations
+- Use `"-"` when the document explicitly lacks information about a field
+- Use `null`/`NaN` when the field simply wasn't labeled for that case
 
 ## 📈 Output Files
 
@@ -220,6 +229,7 @@ ci_results = bootstrap_CI(
 - **Resampling unit**: Individual cases (not individual predictions)
 - **Resampling strategy**: Sample with replacement to preserve original dataset size
 - **CI calculation**: Percentile method using bootstrap distribution
+- **Partial labeling**: Handles missing labels gracefully - cases with missing labels for specific fields are excluded from calculations for those fields only
 - **Metrics included**: All validation metrics (precision, recall, F1, accuracy, etc.)
 
 ### Output Format
