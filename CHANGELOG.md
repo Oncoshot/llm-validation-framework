@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.2.1 (2026-02-23)
+
+### Bug Fixes
+
+- Cosmetic changes in readme.md
+  ([`25cccb4`](https://github.com/Oncoshot/llm-validation-framework/commit/25cccb402fada04d29335167a5f8f2d1f7bc04eb))
+
+
 ## v0.2.0 (2026-02-23)
 
 ### Features
