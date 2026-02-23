@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.2.0 (2026-02-23)
+
+### Features
+
+- Add CI calculation
+  ([`a9506f5`](https://github.com/Oncoshot/llm-validation-framework/commit/a9506f55977f18127948759dd6fb8b009fae1e2e))
+
+
 ## v0.1.7 (2026-02-20)
 
 ### Bug Fixes
