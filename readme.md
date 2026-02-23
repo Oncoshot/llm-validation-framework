@@ -8,6 +8,7 @@ A comprehensive Python framework for evaluating LLM-extracted structured data ag
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
 - **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity with both micro and macro aggregation
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
+- **Statistical uncertainty** - Non-parametric bootstrap confidence intervals for all performance metrics
 - **Production ready** - Parallel processing, intelligent caching, detailed progress tracking
 
 ## 🚀 Quick Start
