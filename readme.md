@@ -1,6 +1,6 @@
 # LLM Validation Framework
 
-A comprehensive Python framework for evaluating LLM-extracted structured data against ground truth labels. Supports binary classification, scalar value extraction, and list field analysis with detailed performance metrics and confidence-based evaluation.
+A comprehensive Python framework for evaluating LLM-extracted structured data against ground truth labels. Supports binary classification, scalar values, and list fields with detailed performance metrics, confidence-based evaluation, and statistical uncertainty quantification via non-parametric bootstrap confidence intervals.
 
 ## ✨ Key Features
 
@@ -14,6 +14,10 @@ A comprehensive Python framework for evaluating LLM-extracted structured data ag
 
 ### Prerequisites
 ```bash
+# Install from PyPI
+pip install oncoshot-llm-validation-framework
+
+# OR install from source
 pip install -r requirements.txt  # Python 3.11+ required
 ```
 
