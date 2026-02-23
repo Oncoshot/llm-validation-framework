@@ -24,8 +24,9 @@ python runme.py
 
 Processes the included [samples.csv](samples.csv) (14 test cases covering all validation scenarios) and outputs timestamped results to `validation_results/samples/`:
 
-- **[Results CSV](validation_results/samples/2026-02-06%2012-27-38%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
-- **[Metrics CSV](validation_results/samples/2026-02-06%2012-27-38%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
+- **[Results CSV](validation_results/samples/2026-02-23%2012-42-40%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
+- **[Metrics CSV](validation_results/samples/2026-02-23%2012-42-40%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
+- **[CI Metrics CSV](validation_results/samples/2026-02-23%2012-42-40%20CI%20metrics.csv)** - Confidence intervals for metrics
 
 | Rows | Field Type | Test Scenarios |
 |------|------------|----------------|
@@ -192,7 +193,56 @@ The following formulas apply to both binary classification and structured extrac
 
 Where P = Precision and R = Recall (calculated differently for each metric type).
 
-## 🛠️ Advanced Configuration
+## � Bootstrap Confidence Intervals
+
+The framework includes statistical confidence interval estimation using non-parametric bootstrap resampling at the case level. This provides uncertainty quantification for all validation metrics.
+
+### Usage
+```python
+from src.validation import bootstrap_CI
+
+# After running validation to get results_df
+ci_results = bootstrap_CI(
+    res_df=results_df,           # Results from validate() function
+    fields=["diagnosis", "treatment"],  # Fields to analyze (or None for auto-detect)
+    n_bootstrap=5000,            # Number of bootstrap samples (default: 5000)
+    ci=0.95,                     # Confidence level (default: 0.95 for 95% CI)
+    random_state=42              # For reproducible results
+)
+```
+
+### Bootstrap Method
+- **Resampling unit**: Individual cases (not individual predictions)
+- **Resampling strategy**: Sample with replacement to preserve original dataset size
+- **CI calculation**: Percentile method using bootstrap distribution
+- **Metrics included**: All validation metrics (precision, recall, F1, accuracy, etc.)
+
+### Output Format
+The `bootstrap_CI()` function returns a DataFrame with confidence intervals for each field:
+
+| Column | Description |
+|--------|-------------|
+| `field` | Field name (including 'exceptions' for system metrics) |
+| `labeled cases` | Number of labeled cases in the dataset |
+| `{metric}: mean` | Bootstrap mean estimate |
+| `{metric}: lower` | Lower bound of confidence interval |
+| `{metric}: upper` | Upper bound of confidence interval |
+
+Example output:
+```
+        field  labeled cases  precision (micro): mean  precision (micro): lower  precision (micro): upper
+0  exceptions          1000                       NaN                       NaN                       NaN
+1   diagnosis          1000                      0.82                      0.79                      0.85
+2   treatment          1000                      0.91                      0.88                      0.94
+```
+
+### Use Cases
+- **Performance assessment**: Quantify uncertainty in reported metrics
+- **Model comparison**: Determine if performance differences are statistically significant  
+- **Sample size planning**: Understand precision of estimates with current dataset size
+- **Publication**: Report confidence intervals alongside point estimates
+
+## �🛠️ Advanced Configuration
 
 ### Parallel Processing
 ```python
