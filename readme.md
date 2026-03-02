@@ -17,7 +17,7 @@ A comprehensive Python framework for evaluating LLM-extracted structured data ag
 ### Prerequisites
 ```bash
 # Install from PyPI
-pip install oncoshot-llm-validation-framework
+pip install llmvalidate
 
 # OR install from source
 pip install -r requirements.txt  # Python 3.11+ required
