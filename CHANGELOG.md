@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.3.0 (2026-03-02)
+
+### Features
+
+- Changed package name
+  ([`01af816`](https://github.com/Oncoshot/llm-validation-framework/commit/01af816bc1cdd6a5d1c7e415604d2d9caa584129))
+
+
 ## v0.2.1 (2026-02-23)
 
 ### Bug Fixes
