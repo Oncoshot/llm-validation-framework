@@ -1,8 +1,8 @@
 # LLM Validation Framework
 
-[![CI](https://github.com/oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=main)](https://github.com/oncoshot/llm-validation-framework/actions)
-[![PyPI version](https://img.shields.io/pypi/v/llm-validation-framework.svg)](https://pypi.org/project/llmvalidate/)
-[![Python versions](https://img.shields.io/pypi/pyversions/llm-validation-framework.svg)](https://pypi.org/project/llmvalidate/)
+[![CI](https://github.com/oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=master)](https://github.com/oncoshot/llm-validation-framework/actions)
+[![PyPI version](https://img.shields.io/pypi/v/llmvalidate.svg)](https://pypi.org/project/llmvalidate/)
+[![Python versions](https://img.shields.io/pypi/pyversions/llmvalidate.svg)](https://pypi.org/project/llmvalidate/)
 [![License](https://img.shields.io/github/license/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/blob/main/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/stargazers)
 
