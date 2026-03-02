@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.0 (2026-03-02)
+
+### Features
+
+- Added widgets
+  ([`28eab7e`](https://github.com/Oncoshot/llm-validation-framework/commit/28eab7e83a55d75fe0a7143acfdcac0a02ff0d0d))
+
+
 ## v0.3.0 (2026-03-02)
 
 ### Features
