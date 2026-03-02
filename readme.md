@@ -1,10 +1,10 @@
 # LLM Validation Framework
 
-[![CI](https://github.com/oncoshot/oncoshot-llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=main)](https://github.com/oncoshot/oncoshot-llm-validation-framework/actions)
-[![PyPI version](https://img.shields.io/pypi/v/oncoshot-llm-validation-framework.svg)](https://pypi.org/project/llmvalidate/)
-[![Python versions](https://img.shields.io/pypi/pyversions/oncoshot-llm-validation-framework.svg)](https://pypi.org/project/llmvalidate/)
-[![License](https://img.shields.io/github/license/oncoshot/oncoshot-llm-validation-framework.svg)](https://github.com/oncoshot/oncoshot-llm-validation-framework/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/oncoshot/oncoshot-llm-validation-framework.svg)](https://github.com/oncoshot/oncoshot-llm-validation-framework/stargazers)
+[![CI](https://github.com/oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=main)](https://github.com/oncoshot/llm-validation-framework/actions)
+[![PyPI version](https://img.shields.io/pypi/v/llm-validation-framework.svg)](https://pypi.org/project/llmvalidate/)
+[![Python versions](https://img.shields.io/pypi/pyversions/llm-validation-framework.svg)](https://pypi.org/project/llmvalidate/)
+[![License](https://img.shields.io/github/license/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/stargazers)
 
 A comprehensive Python framework for evaluating LLM-extracted structured data against ground truth labels. Supports binary classification, scalar values, and list fields with detailed performance metrics, confidence-based evaluation, and statistical uncertainty quantification via non-parametric bootstrap confidence intervals.
 
