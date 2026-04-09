@@ -26,21 +26,19 @@ classifiers = [
 "Bug Tracker" = "https://github.com/Oncoshot/llm-validation-framework/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = [
-  ".",
   "src",
 ]
 
 [tool.semantic_release]
-version_variable = ["src/__init__.py:__version__"]
+version_variable = ["src/llmvalidate/__init__.py:__version__"]
 version_toml = ["pyproject.toml:project.version"]
 branch = "master"
 allow_zero_version = true
 build_command = "pip install build && python -m build"
 upload_to_pypi = true
 upload_to_release = true
-
 commit_version_number = true
