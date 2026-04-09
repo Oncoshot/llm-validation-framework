@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 import numpy as np
-import src.validation as v
+import src.llmvalidate.validation as v
 
 
 def test_bootstrap_CI_basic():

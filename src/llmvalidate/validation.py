@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+﻿﻿from datetime import datetime
 import math
 from ast import literal_eval
 import string
@@ -8,7 +8,7 @@ import time
 import os
 import concurrent.futures as cf
 from tqdm import tqdm
-from src.utils import convert_lists, infer_fields
+from src.llmvalidate.utils import convert_lists, infer_fields
 
 def compare_results_binary(expected, actual):
     """Compares boolean labels and returns confusion matrix counts."""
