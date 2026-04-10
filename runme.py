@@ -16,7 +16,7 @@ def main():
     
     # Extract input file name without extension and create subfolder
     input_filename = os.path.splitext(os.path.basename(input_file))[0]
-    output_folder = ".\\validation_results\\" + input_filename
+    output_folder = os.path.join("validation_results", input_filename)
     
     # Create the output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
