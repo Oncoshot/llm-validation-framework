@@ -42,3 +42,17 @@ build_command = "pip install build && python -m build"
 upload_to_pypi = true
 upload_to_release = true
 commit_version_number = true
+
+dependencies = [
+    "pandas>=3.0.0",
+    "numpy>=2.4.1",
+    "pydantic>=2.12.5",
+    "tqdm>=4.67.1",
+    "python-dateutil>=2.9.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.2",
+    "colorama>=0.4.6"
+]
