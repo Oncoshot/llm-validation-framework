@@ -1,5 +1,5 @@
 import os
-import src.llmvalidate.validation as v
+import llmvalidate.validation as v
 import pandas as pd
 pd.options.display.width = 0
 from datetime import datetime
