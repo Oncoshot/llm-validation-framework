@@ -1,12 +1,9 @@
-import sys
 import os
-import llmvalidate.validation as v
+import src.llmvalidate.validation as v
 import pandas as pd
 pd.options.display.width = 0
 from datetime import datetime
 
-# Add the 'src' directory to the Python path so it can find 'llmvalidate'
-sys.path.insert(0, os.path.abspath('src'))
 
 def main():
     input_file  = r"samples.csv"

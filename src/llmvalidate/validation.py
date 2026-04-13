@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 import math
 from ast import literal_eval
 import string
