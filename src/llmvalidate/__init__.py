@@ -1,4 +1,4 @@
-__version__ = "0.4.2"
+__version__ = "0.0.0"
 
 from .validation import validate, bootstrap_CI
 from .structured import StructuredResult, StructuredGroup, StructuredField
