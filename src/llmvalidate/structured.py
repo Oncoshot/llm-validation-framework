@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel
+from pydantic import BaseModel
 from typing import Any, List, Dict, Optional, Union
 
 # For all LLM Extracted Value

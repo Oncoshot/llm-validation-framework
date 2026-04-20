@@ -313,10 +313,11 @@ pytest tests/compare_results_all_test.py   # End-to-end comparisons
 ```
 llm-validation-framework/
 ├── src/
-│   ├── validation.py     # Main validation pipeline and metrics calculation
-│   ├── structured.py     # Pydantic data models for LLM results
-│   ├── utils.py         # Utility functions (list conversion, flattening)
-│   └── standardize.py   # Data standardization helpers
+│   └── llmvalidate/
+│       ├── validation.py     # Main validation pipeline and metrics calculation
+│       ├── structured.py     # Pydantic data models for LLM results
+│       ├── utils.py         # Utility functions (list conversion, flattening)
+│       └── standardize.py   # Data standardization helpers
 ├── tests/               # Comprehensive test suite
 ├── validation_results/  # Output directory (auto-created)
 ├── samples.csv         # Demo dataset with all validation scenarios  

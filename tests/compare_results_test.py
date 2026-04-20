@@ -1,5 +1,5 @@
 from numpy import nan
-import src.validation as v
+import llmvalidate.validation as v
 import pytest
 import math
 

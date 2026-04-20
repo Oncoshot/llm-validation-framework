@@ -1,9 +1,11 @@
 ﻿import pandas as pd
 import pytest
-import src.validation as v
-from src.utils import convert_lists
-from src.structured import StructuredResult, StructuredField, StructuredGroup 
-from src.utils import flatten_structured_result
+import llmvalidate.validation as v
+from llmvalidate.utils import convert_lists
+from llmvalidate.structured import StructuredResult, StructuredField, StructuredGroup
+from llmvalidate.utils import flatten_structured_result
+
+
 pd.options.display.width = 0
 
 _CASES = [
