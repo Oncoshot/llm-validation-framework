@@ -62,7 +62,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3.1.1
         with:
-          app-id: ${{ secrets.BOT_APP_ID }}
+          client-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Python Semantic Release
