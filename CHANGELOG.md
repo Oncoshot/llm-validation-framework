@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v0.4.3 (2026-04-26)
+
+### Bug Fixes
+
+- Fixed ci-cd pipeline
+  ([`5d48160`](https://github.com/Oncoshot/llm-validation-framework/commit/5d48160c1384fa08d1529388197a7f2f921e0fb3))
+
+- Fixed ci-cd pipeline
+  ([`1c22970`](https://github.com/Oncoshot/llm-validation-framework/commit/1c2297065a84b1f76583a4c5717173aabdd54b26))
+
+- Fixed ci-cd pipeline
+  ([`162efc3`](https://github.com/Oncoshot/llm-validation-framework/commit/162efc399cd8a005f3b8085ea18c48c4f1bfb74e))
+
+- ONC-11999 llmvalidate import
+  ([`e8ac8dd`](https://github.com/Oncoshot/llm-validation-framework/commit/e8ac8dde930a1f1c3f38a71ffbd23f4812dadcec))
+
+- ONC-11999 llmvalidate import with dependencies
+  ([`88157ce`](https://github.com/Oncoshot/llm-validation-framework/commit/88157ce839096db1f141f6e8694bccd7315ac8d8))
+
+### Build System
+
+- **deps**: Bump pygments from 2.19.2 to 2.20.0
+  ([`6385daf`](https://github.com/Oncoshot/llm-validation-framework/commit/6385daf61e858f54f47a808d082b4873802ce36f))
+
+- **deps**: Bump pytest from 9.0.2 to 9.0.3
+  ([`0cdde72`](https://github.com/Oncoshot/llm-validation-framework/commit/0cdde7240da3aad25969527b44acdedfdd5d221a))
+
+
 ## v0.4.2 (2026-03-02)
 
 ### Bug Fixes
