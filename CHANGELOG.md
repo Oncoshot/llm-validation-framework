@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.4 (2026-06-05)
+
+### Bug Fixes
+
+- Remove unusable standardize module and relax dependency floors
+  ([`9aef011`](https://github.com/Oncoshot/llm-validation-framework/commit/9aef011f7774fdcea8dc3e9511402dcb91488de4))
+
+
 ## v0.4.3 (2026-04-26)
 
 ### Bug Fixes
