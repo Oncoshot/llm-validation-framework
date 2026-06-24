@@ -16,7 +16,16 @@ def compare_results_binary(expected, actual):
     if (is_expected_undefined(expected)):
         return {'TP': None, 'TN': None, 'FP': None, 'FN': None}
 
-    TP = 1 if expected is True and actual is True else 0 
+    # numpy bool scalars (produced when an all-bool object column is re-inferred to
+    # a numpy `bool` dtype, e.g. by convert_lists' DataFrame.map) fail identity
+    # checks like `value is True`, which would otherwise score every row 0 for a
+    # fully-labelled binary field (ONC-12248). Normalize to native Python bools.
+    if isinstance(expected, np.bool_):
+        expected = bool(expected)
+    if isinstance(actual, np.bool_):
+        actual = bool(actual)
+
+    TP = 1 if expected is True and actual is True else 0
     FN = 1 if expected is True and actual is not True else 0 
     TN = 1 if expected is False and actual is False else 0
     FP = 1 if expected is False and actual is not False else 0
