@@ -588,6 +588,53 @@ def test_metrics_with_confidence_levels():
             conf_rows = metrics_df[metrics_df.confidence == conf_level]
             assert len(conf_rows) > 0, f"Should have at least some rows for confidence level {conf_level}"
 
+def test_validate_fully_labelled_binary_field():
+    """
+    Regression test for ONC-12248: a FULLY labelled binary field (no NaN rows) passed
+    through validate with structure_callback=None must produce correct confusion counts.
+
+    When the binary column has no NaN, convert_lists (via DataFrame.map) re-infers it to a
+    numpy bool dtype, so iterrows() yields numpy.bool_ scalars. Comparing those by identity
+    (numpy.bool_(True) is True == False) used to silently zero out every confusion count.
+    """
+    src = pd.DataFrame({
+        "Has metastasis":      pd.Series([True, False, True, False], dtype=object),
+        "Res: Has metastasis": pd.Series([True, False, True, True],  dtype=object),
+    })
+
+    res_df, metrics_df = v.validate(
+        src,
+        ["Has metastasis"],
+        structure_callback=None,
+        output_folder=None,
+    )
+
+    # --- Per-row confusion checks (res_df) ---
+    # row0: expected True, actual True  -> TP
+    # row1: expected False, actual False -> TN
+    # row2: expected True, actual True  -> TP
+    # row3: expected False, actual True  -> FP
+    assert res_df.loc[0, 'TP: Has metastasis'] == 1
+    assert res_df.loc[1, 'TN: Has metastasis'] == 1
+    assert res_df.loc[2, 'TP: Has metastasis'] == 1
+    assert res_df.loc[3, 'FP: Has metastasis'] == 1
+
+    # This field has no confidence data, so get_metrics drops the 'confidence' column and
+    # there is a single (Overall) row per field; look it up directly by field.
+    def _agg(name):
+        return metrics_df.loc[metrics_df.field == 'Has metastasis', name].iloc[0]
+
+    # --- Aggregate confusion counts ---
+    assert _agg('TP') == 2
+    assert _agg('FP') == 1
+    assert _agg('FN') == 0
+    assert _agg('TN') == 1
+
+    # --- Aggregate metrics ---
+    assert _agg('precision (micro)') == pytest.approx(2/3)
+    assert _agg('recall (micro)') == pytest.approx(1.0)
+    assert _agg('F1 score (micro)') == pytest.approx(0.8)
+
 def test_reorder_result_columns():
     """Test that _reorder_result_columns groups columns with the same base name together."""
     
