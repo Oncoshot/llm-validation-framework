@@ -10,16 +10,38 @@ import concurrent.futures as cf
 from tqdm import tqdm
 from .utils import convert_lists, infer_fields
 
+def _equals_bool(value, target):
+    """True iff `value` equals the boolean `target` by value.
+
+    Results may arrive as ``numpy.bool_`` (an all-bool column gets re-inferred
+    away from ``object`` dtype by :func:`convert_lists`), and
+    ``numpy.bool_(True) is True`` is ``False`` — so identity checks silently
+    miss every row. Undefined values (None / NaN / "") match neither True nor
+    False, preserving the original "missing prediction is a miss" semantics.
+    """
+    if is_expected_undefined(value):
+        return False
+    try:
+        return bool(value) == target
+    except (TypeError, ValueError):
+        return False
+
+
 def compare_results_binary(expected, actual):
     """Compares boolean labels and returns confusion matrix counts."""
 
     if (is_expected_undefined(expected)):
         return {'TP': None, 'TN': None, 'FP': None, 'FN': None}
 
-    TP = 1 if expected is True and actual is True else 0 
-    FN = 1 if expected is True and actual is not True else 0 
-    TN = 1 if expected is False and actual is False else 0
-    FP = 1 if expected is False and actual is not False else 0
+    expected_true = _equals_bool(expected, True)
+    expected_false = _equals_bool(expected, False)
+    actual_true = _equals_bool(actual, True)
+    actual_false = _equals_bool(actual, False)
+
+    TP = 1 if expected_true and actual_true else 0
+    FN = 1 if expected_true and not actual_true else 0
+    TN = 1 if expected_false and actual_false else 0
+    FP = 1 if expected_false and not actual_false else 0
 
     return {"TP": TP, "TN": TN, "FP": FP, "FN": FN}
 

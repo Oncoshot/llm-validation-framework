@@ -1,4 +1,5 @@
 ﻿import pandas as pd
+import numpy as np
 import pytest
 import llmvalidate.validation as v
 from llmvalidate.utils import convert_lists
@@ -758,3 +759,43 @@ def test_reorder_result_columns():
     assert drugs_comment_idx == drugs_correct_idx + 1, "Related columns should be consecutive"
     
     print("✓ All tests passed! Column reordering works correctly.")
+
+
+# ONC-12248: a fully-labelled binary field was silently returning all-zero
+# confusion counts. compare_results_binary compared by identity, but
+# numpy.bool_(True) is True -> False, so every row was missed. These tests lock
+# in the value-based comparison while preserving the three-way semantics.
+def test_compare_results_binary_numpy_bool_and_semantics():
+    # numpy.bool_ inputs must be compared by value, not identity (the bug fix)
+    assert v.compare_results_binary(np.bool_(True), np.bool_(True)) == {"TP": 1, "TN": 0, "FP": 0, "FN": 0}
+    assert v.compare_results_binary(np.bool_(False), np.bool_(False)) == {"TP": 0, "TN": 1, "FP": 0, "FN": 0}
+    assert v.compare_results_binary(np.bool_(False), np.bool_(True)) == {"TP": 0, "TN": 0, "FP": 1, "FN": 0}
+
+    # native python bools behave identically
+    assert v.compare_results_binary(True, True) == {"TP": 1, "TN": 0, "FP": 0, "FN": 0}
+    assert v.compare_results_binary(True, False) == {"TP": 0, "TN": 0, "FP": 0, "FN": 1}
+    assert v.compare_results_binary(False, True) == {"TP": 0, "TN": 0, "FP": 1, "FN": 0}
+
+    # undefined actual is still a miss (FN if expected True, FP if expected False)
+    assert v.compare_results_binary(True, np.nan)["FN"] == 1
+    assert v.compare_results_binary(False, np.nan)["FP"] == 1
+
+
+# ONC-12248: regression test through the full validate() path for a
+# fully-labelled binary field, which is exactly the path that was broken
+# (the all-bool column gets re-inferred to numpy bool dtype by convert_lists).
+def test_validate_fully_labelled_binary_field():
+    src = pd.DataFrame({
+        "Has metastasis":      pd.Series([True, False, True, False], dtype=object),
+        "Res: Has metastasis": pd.Series([True, False, True, True],  dtype=object),
+    })
+    _, metrics = v.validate(src, ["Has metastasis"], structure_callback=None, output_folder=None)
+
+    row = metrics.loc[metrics["field"] == "Has metastasis"].iloc[0]
+    assert row["TP"] == 2
+    assert row["FP"] == 1
+    assert row["FN"] == 0
+    assert row["TN"] == 1
+    assert row["precision (micro)"] == pytest.approx(2 / 3)
+    assert row["recall (micro)"] == pytest.approx(1.0)
+    assert row["F1 score (micro)"] == pytest.approx(0.8)
