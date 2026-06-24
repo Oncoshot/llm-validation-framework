@@ -16,10 +16,20 @@ def compare_results_binary(expected, actual):
     if (is_expected_undefined(expected)):
         return {'TP': None, 'TN': None, 'FP': None, 'FN': None}
 
-    TP = 1 if expected is True and actual is True else 0 
-    FN = 1 if expected is True and actual is not True else 0 
-    TN = 1 if expected is False and actual is False else 0
-    FP = 1 if expected is False and actual is not False else 0
+    # Compare by value, not identity. validate() passes binary columns through
+    # convert_lists -> DataFrame.map, which re-infers an all-bool object column
+    # back to a numpy bool dtype, so iterrows yields numpy.bool_ scalars.
+    # numpy.bool_(True) is True evaluates to False, which silently zeroed every
+    # count for fully-labelled binary fields (ONC-12248). A missing/NaN actual
+    # is still treated as a wrong prediction, matching the previous behaviour.
+    expected_true = bool(expected)
+    actual_missing = is_scalar_empty(actual)
+    actual_true = (not actual_missing) and bool(actual)
+
+    TP = 1 if expected_true and actual_true else 0
+    FN = 1 if expected_true and not actual_true else 0
+    TN = 1 if (not expected_true) and (not actual_missing) and (not actual_true) else 0
+    FP = 1 if (not expected_true) and (actual_missing or actual_true) else 0
 
     return {"TP": TP, "TN": TN, "FP": FP, "FN": FN}
 

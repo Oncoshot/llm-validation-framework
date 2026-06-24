@@ -310,6 +310,41 @@ def test_validate_basic_no_confidence():
 
     assert metrics_df.loc[metrics_df.field == 'exceptions', 'field-present cases'].iloc[0] == 0
 
+def test_fully_labelled_binary_field_metrics():
+    """
+    Regression test for ONC-12248.
+
+    A fully-labelled binary field (every row labelled, dtype=object bools) is
+    passed through validate(). Internally convert_lists -> DataFrame.map re-infers
+    the all-bool object column back to a numpy bool dtype, so iterrows yields
+    numpy.bool_ scalars. The old identity comparison (numpy.bool_(True) is True ==
+    False) silently zeroed every confusion-matrix count. This asserts the counts
+    and metrics are now computed by value.
+    """
+    src = pd.DataFrame({
+        "Has metastasis":      pd.Series([True, False, True, False], dtype=object),
+        "Res: Has metastasis": pd.Series([True, False, True, True],  dtype=object),
+    })
+
+    _, metrics = v.validate(
+        src,
+        ["Has metastasis"],
+        structure_callback=None,
+        output_folder=None,
+    )
+
+    # Only one binary field is present, so get_metrics drops the all-'Overall'
+    # confidence column; look the row up by field directly.
+    row = metrics.loc[metrics.field == "Has metastasis"].iloc[0]
+    assert row['TP'] == 2
+    assert row['FP'] == 1
+    assert row['FN'] == 0
+    assert row['TN'] == 1
+    assert row['precision (micro)'] == pytest.approx(0.6667, abs=1e-4)
+    assert row['recall (micro)'] == pytest.approx(1.0)
+    assert row['F1 score (micro)'] == pytest.approx(0.8)
+
+
 def test_process_all_with_cases():
     """
     Verifies process_all independently:
