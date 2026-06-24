@@ -598,8 +598,8 @@ def test_validate_fully_labelled_binary_field():
     (numpy.bool_(True) is True == False) used to silently zero out every confusion count.
     """
     src = pd.DataFrame({
-        "Has metastasis":      pd.Series([True, False, True, False], dtype=object),
-        "Res: Has metastasis": pd.Series([True, False, True, True],  dtype=object),
+        "Has metastasis": pd.Series([True, False, True, False], dtype=bool),
+        "Res: Has metastasis": pd.Series([True, False, True, True], dtype=bool),
     })
 
     res_df, metrics_df = v.validate(
