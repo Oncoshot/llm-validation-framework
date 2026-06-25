@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.4.5 (2026-06-25)
+
+### Bug Fixes
+
+- ONC-12248 compare binary labels by value to handle numpy bool dtype
+  ([`746d657`](https://github.com/Oncoshot/llm-validation-framework/commit/746d65794286043feb9be2f9d11b21f9a91fcc29))
+
+### Documentation
+
+- ONC-12248 add agent entry-point doc (AGENTS.md)
+  ([`cae963d`](https://github.com/Oncoshot/llm-validation-framework/commit/cae963d53f0f81dd9a424e1533d1f656e62ce5cc))
+
+
 ## v0.4.4 (2026-06-05)
 
 ### Bug Fixes
