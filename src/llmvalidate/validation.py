@@ -16,7 +16,15 @@ def compare_results_binary(expected, actual):
     if (is_expected_undefined(expected)):
         return {'TP': None, 'TN': None, 'FP': None, 'FN': None}
 
-    TP = 1 if expected is True and actual is True else 0 
+    # Fully-labelled binary columns get re-inferred to numpy bool dtype by convert_lists,
+    # so iterrows yields numpy.bool_ scalars; normalize those to native bool because the
+    # identity checks below (is True / is False) fail for numpy.bool_ (ONC-12248).
+    if isinstance(expected, np.bool_):
+        expected = bool(expected)
+    if isinstance(actual, np.bool_):
+        actual = bool(actual)
+
+    TP = 1 if expected is True and actual is True else 0
     FN = 1 if expected is True and actual is not True else 0 
     TN = 1 if expected is False and actual is False else 0
     FP = 1 if expected is False and actual is not False else 0
