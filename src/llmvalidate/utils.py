@@ -35,9 +35,15 @@ def flatten_structured_result(structured_result: StructuredResult, remove_quotes
     Flatten a StructuredResult into a flat dictionary ignoring groups.
 
     Output format (for each field with name N):
-      N: <value>
-      N confidence: <confidence>        (only if provided)
-      N justification: <justification>  (only if provided)
+      N: <value>                         (when `code` is None)
+      N-value: <value>, N-code: <code>   (when `code` is set — a coded concept)
+      N confidence: <confidence>         (only if provided; stays keyed by N, not per-facet)
+      N justification: <justification>   (only if provided; stays keyed by N)
+
+    A field carrying a `code` (e.g. an ICD-10 / ICD-O-3 / RxNorm concept) flattens to
+    two scored facets, `N-value` and `N-code`, each compared against the label column of
+    the same name. `confidence` / `justification` remain keyed by the logical field N (a
+    single column), and `get_metrics` bins both facets by that one confidence column.
 
     Later duplicates overwrite earlier ones (last one wins).
 
@@ -45,6 +51,11 @@ def flatten_structured_result(structured_result: StructuredResult, remove_quotes
     remove_quotes (bool): If True, remove double quotes inside stringified lists
                             (e.g., '["A", "B"]' -> '[A, B]').
     """
+    def _dequote(v):
+        if remove_quotes and isinstance(v, str) and re.match(r'^\[.*\]$', v.strip()):
+            return re.sub(r'"\s*([^"]*?)\s*"', r'\1', v)
+        return v
+
     flat: Dict[str, Any] = {}
     if not structured_result or not structured_result.groups:
         return flat
@@ -59,14 +70,17 @@ def flatten_structured_result(structured_result: StructuredResult, remove_quotes
             if not base_name:
                 continue
 
-            # always define value before using it
-            value = field.value
+            value = _dequote(field.value)
 
-            if remove_quotes and isinstance(value, str) and re.match(r'^\[.*\]$', value.strip()):
-                value = re.sub(r'"\s*([^"]*?)\s*"', r'\1', value)
+            if field.code is not None:
+                # Coded concept -> two scored facets; label columns are named the same.
+                flat[f"{base_name}-value"] = value
+                flat[f"{base_name}-code"] = _dequote(field.code)
+            else:
+                flat[base_name] = value
 
-            flat[base_name] = value
-
+            # confidence / justification stay keyed by the logical field N (single column,
+            # applied to both facets by get_metrics), not duplicated per facet.
             if field.confidence is not None:
                 flat[f"{base_name} confidence"] = field.confidence
             if field.justification is not None:
