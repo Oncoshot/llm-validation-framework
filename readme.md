@@ -111,7 +111,7 @@ results_df, metrics_df = validate(
 | **Binary** | True/False detection | `True`, `False` | `True`, `False` |
 | **Scalar** | Single text/numeric value | `"Lung Cancer"` <br> `42` | `"Breast Cancer"` <br> `38` |
 | **List** | Multiple values | `["Drug A", "Drug B"]` <br> `"['Item1', 'Item2']"` | `["Drug A"]` <br> `[]` |
-| **Coded** | A value **and** its code (ICD-10/O-3, RxNorm) — scored as two facets | `X-value`: `"Adenocarcinoma"` <br> `X-code`: `"8140/3"` | via `StructuredField(..., code=...)` |
+| **Coded** | A value **and** its code (ICD-10 / ICD-O-3, RxNorm) — scored as two facets | `X-value`: "Adenocarcinoma" <br> `X-code`: "8140/3" | via `StructuredField(..., code=...)` |
 
 ### Coded Fields (value + code)
 
