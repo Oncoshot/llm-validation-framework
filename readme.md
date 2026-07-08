@@ -111,6 +111,29 @@ results_df, metrics_df = validate(
 | **Binary** | True/False detection | `True`, `False` | `True`, `False` |
 | **Scalar** | Single text/numeric value | `"Lung Cancer"` <br> `42` | `"Breast Cancer"` <br> `38` |
 | **List** | Multiple values | `["Drug A", "Drug B"]` <br> `"['Item1', 'Item2']"` | `["Drug A"]` <br> `[]` |
+| **Coded** | A value **and** its code (ICD-10/O-3, RxNorm) — scored as two facets | `X-value`: `"Adenocarcinoma"` <br> `X-code`: `"8140/3"` | via `StructuredField(..., code=...)` |
+
+### Coded Fields (value + code)
+
+A `StructuredField` may carry an optional **`code`** alongside its `value` — for coded
+concepts such as ICD-10 / ICD-O-3 topography-morphology or RxNorm drug codes:
+
+```python
+StructuredField(name="Primary Histology", value="Adenocarcinoma", code="8140/3",
+                confidence="High")
+```
+
+When `code` is set, the field flattens to **two scored facets** — `Primary Histology-value`
+and `Primary Histology-code` — each compared against the label column of the same name.
+`confidence` / `justification` stay attached to the logical field (a single
+`Res: Primary Histology confidence` column), and its confidence breakdown is applied to
+**both** facets. `value` and `code` may be lists (e.g. drug names + their RxNorm codes),
+scored set-wise per facet.
+
+When `code` is `None` (the default) the field flattens to a single `<name>` column as
+before — fully backward-compatible. A coded field whose code is genuinely unknown should
+still pass `code="-"` (the no-information sentinel), **not** `None`, so it keeps aligning
+with the `-value` / `-code` label columns.
 
 ### Special Value Handling
 - **`"-"`** = Labeled as "No information is available in the source document"
@@ -134,8 +157,8 @@ The framework generates two timestamped CSV files for each validation run:
 
 **Original Data:**
 - All input columns (labels, raw text, etc.)
-- `Res: {Field}` columns with LLM predictions 
-- `Res: {Field} confidence` and `Res: {Field} justification` (if available)
+- `Res: {Field}` columns with LLM predictions (coded fields split into `Res: {Field}-value` and `Res: {Field}-code`)
+- `Res: {Field} confidence` and `Res: {Field} justification` (if available; kept per logical field, and shared across a coded field's two facets)
 
 **Binary Fields:**
 - `TP/FP/FN/TN: {Field}` - Confusion matrix counts (1 or 0 per row)
