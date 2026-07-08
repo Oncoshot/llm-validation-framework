@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.4.6 (2026-07-08)
+
+### Chores
+
+- ONC-12308 add .gitattributes to enforce LF line endings
+  ([`7d8463e`](https://github.com/Oncoshot/llm-validation-framework/commit/7d8463ee706727783f96a71bec24960b4733ea62))
+
+### Performance Improvements
+
+- ONC-12308 lazy-load the scorer so structured types import without pandas
+  ([`1055eb8`](https://github.com/Oncoshot/llm-validation-framework/commit/1055eb8feeec0e96ad0cc4f756d45f32b5fbdbd3))
+
+### Refactoring
+
+- ONC-12308 cache lazily-loaded scorer attrs and expose them via __dir__
+  ([`5a348f5`](https://github.com/Oncoshot/llm-validation-framework/commit/5a348f525b17c3f25077c66970bfd83c0040977e))
+
+
 ## v0.4.5 (2026-06-25)
 
 ### Bug Fixes
