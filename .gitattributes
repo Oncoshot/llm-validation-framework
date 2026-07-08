@@ -1,0 +1,4 @@
+# Normalize line endings: store text files as LF in the repo and check them out as LF,
+# so a Windows working tree can't reintroduce CRLF drift (which showed up as whole-file
+# diffs). Binary files are left untouched by `text=auto` detection. See ONC-12308.
+* text=auto eol=lf
