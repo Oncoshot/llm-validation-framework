@@ -47,6 +47,31 @@ def test_scorer_is_accessible_and_loads_lazily():
     assert out == "True", f"expected pandas loaded once the scorer is used, got: {out}"
 
 
+def test_entry_points_listed_in_dir_without_loading_pandas():
+    # dir()/introspection must show validate & bootstrap_CI even before first access,
+    # and merely listing them must not drag in pandas.
+    out = _run(
+        "import sys, llmvalidate\n"
+        "names = dir(llmvalidate)\n"
+        "assert 'validate' in names and 'bootstrap_CI' in names, names\n"
+        f"print({_pandas_loaded_expr()})\n"
+    )
+    assert out == "False", f"dir() should not load pandas: {out}"
+
+
+def test_resolved_scorer_is_cached_on_the_module():
+    # After first access the attribute is cached into the module namespace (so repeated
+    # access skips __getattr__) and identity is stable.
+    out = _run(
+        "import llmvalidate\n"
+        "v1 = llmvalidate.validate\n"
+        "assert 'validate' in vars(llmvalidate)\n"
+        "assert llmvalidate.validate is v1\n"
+        "print('ok')\n"
+    )
+    assert out == "ok"
+
+
 def test_unknown_attribute_still_raises():
     out = _run(
         "import llmvalidate\n"
