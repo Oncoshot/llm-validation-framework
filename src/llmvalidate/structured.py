@@ -9,6 +9,10 @@ from typing import Any, List, Dict, Optional, Union
 class StructuredField(BaseModel):
     name: str
     value: Any
+    # Optional coded value for a dictionary-backed concept (ICD-10 / ICD-O-3 / RxNorm).
+    # When set, the field flattens to two scored facets `<name>-value` and `<name>-code`
+    # (see flatten_structured_result); when None, the field flattens to a single `<name>`.
+    code: Optional[Any] = None
     justification: Optional[str] = None
     confidence: Optional[str] = None
 
