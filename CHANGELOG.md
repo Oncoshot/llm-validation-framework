@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v0.5.0 (2026-07-08)
+
+### Chores
+
+- ONC-12309 normalize edited src files to LF
+  ([`53e12bd`](https://github.com/Oncoshot/llm-validation-framework/commit/53e12bd17aa4189c5f229938f27bfa70f283747f))
+
+### Documentation
+
+- ONC-12309 document optional code field (value/code facets) in readme
+  ([`49aa6ff`](https://github.com/Oncoshot/llm-validation-framework/commit/49aa6ffdd97ffc80a5e1643f6eb88dd7103af102))
+
+### Features
+
+- ONC-12309 optional code on StructuredField scored as -value/-code facets
+  ([`41a484b`](https://github.com/Oncoshot/llm-validation-framework/commit/41a484b8b837aa54c787104eeb01fa3a4117e870))
+
+### Testing
+
+- ONC-12309 use Title-case confidence values to match suite convention
+  ([`55905f6`](https://github.com/Oncoshot/llm-validation-framework/commit/55905f63d5525ca9342ebc7e393a5ab5bf58ca1b))
+
+
 ## v0.4.6 (2026-07-08)
 
 ### Chores
