@@ -13,17 +13,6 @@ A comprehensive Python framework for evaluating LLM-extracted structured data ag
 The methodology behind this framework is described in a medRxiv preprint:
 [medRxiv 2026.05.18.26353541](https://www.medrxiv.org/content/10.64898/2026.05.18.26353541v1) — DOI: [10.64898/2026.05.18.26353541](https://doi.org/10.64898/2026.05.18.26353541)
 
-If you use `llmvalidate` in your work, please cite the preprint:
-
-```bibtex
-@misc{llmvalidate_preprint_2026,
-  howpublished = {medRxiv preprint},
-  year         = {2026},
-  doi          = {10.64898/2026.05.18.26353541},
-  url          = {https://www.medrxiv.org/content/10.64898/2026.05.18.26353541v1}
-}
-```
-
 ## ✨ Key Features
 
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
