@@ -8,6 +8,11 @@
 
 A comprehensive Python framework for evaluating LLM-extracted structured data against ground truth labels. Supports binary classification, scalar values, and list fields with detailed performance metrics, confidence-based evaluation, and statistical uncertainty quantification via non-parametric bootstrap confidence intervals.
 
+## 📄 Paper
+
+The methodology behind this framework is described in a medRxiv preprint:
+[medRxiv 2026.05.18.26353541](https://www.medrxiv.org/content/10.64898/2026.05.18.26353541v1) — DOI: [10.64898/2026.05.18.26353541](https://doi.org/10.64898/2026.05.18.26353541)
+
 ## ✨ Key Features
 
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
