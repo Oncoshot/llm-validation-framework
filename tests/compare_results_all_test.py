@@ -151,6 +151,16 @@ def test_compare_results_all_mixed_fields():
     assert res_df.loc[6, 'Cor: color'] == 1
     assert res_df.loc[6, 'Inc: color'] == 0
 
+    # ---- Scalar TN column ----
+    # TN = 1 only when label is '-' (no information) AND prediction is empty
+    assert res_df.loc[4, 'TN: color'] == 1        # label '-', prediction ''
+    assert res_df.loc[5, 'TN: color'] == 1        # label '-', prediction '-'
+    for i in [0, 1, 2, 3, 6]:                     # label or prediction present
+        assert res_df.loc[i, 'TN: color'] == 0
+    assert _is_none_or_nan(res_df.loc[7, 'TN: color'])  # not labeled -> undefined
+   # TN is not defined for list fields
+    assert 'TN: fruits' not in res_df.columns
+
     # Ensure orphan column passed through unchanged
     assert 'orphan' in res_df.columns
 
@@ -158,7 +168,7 @@ def test_compare_results_all_mixed_fields():
         'TP: flag','TN: flag','FP: flag','FN: flag',
         'Cor: fruits','Mis: fruits','Spu: fruits',
         'Precision: fruits','Recall: fruits','F1 score: fruits',
-        'Cor: color','Inc: color','Mis: color','Spu: color'
+        'Cor: color','Inc: color','Mis: color','Spu: color','TN: color'
     ]
     for col in expected_columns:
         assert col in res_df.columns, f"Missing column {col} in compare_results_all output"

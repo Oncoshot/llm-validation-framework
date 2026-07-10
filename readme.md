@@ -169,7 +169,7 @@ The framework generates two timestamped CSV files for each validation run:
 - `TP/FP/FN/TN: {Field}` - Confusion matrix counts (1 or 0 per row)
 
 **Non-Binary Fields:**  
-- `Cor/Inc/Mis/Spu: {Field}` - Item counts per row
+- `Cor/Inc/Mis/Spu/TN: {Field}` - Item counts per row
 - `Cor/Inc/Mis/Spu: {Field} items` - Actual item lists
 - `Precision/Recall/F1/F2: {Field}` - Per-row metrics (list fields only)
 
@@ -189,7 +189,7 @@ The framework generates two timestamped CSV files for each validation run:
 
 **Binary Metrics:** `TP`, `TN`, `FP`, `FN`, `precision`, `recall`, `F1/F2`, `accuracy`, `specificity`
 
-**Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `precision/recall/F1/F2 (micro)`, `precision/recall/F1/F2 (macro)`
+**Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `TN`, `precision/recall/F1/F2/specificity (micro)`, `precision/recall/F1/F2 (macro)`
 
 ## ⚡ Performance Metrics Explained
 ### Binary Classification Metrics
@@ -222,6 +222,7 @@ For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
 | **Missing (Mis)** | Items present in label but not extracted | (Same example) → Mis=1 (DrugB missing) |
 | **Spurious (Spu)** | Items extracted but not in label | Label: `["DrugA"]`, Prediction: `["DrugA", "DrugC"]` → Spu=1 |
 | **Incorrect (Inc)** | Wrong values for scalar fields | Label: `"Cancer"`, Prediction: `"Diabetes"` → Inc=1 |
+| **True Negative (TN)** | Scalar fields only: field correctly left empty | Label: `"-"`, Prediction: `""`/`"-"` → TN=1 |
 
 #### Structured Extraction Formulas
 
@@ -229,8 +230,9 @@ For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
 |--------|---------|---------|
 | **Precision** | `Cor / (Cor + Spu + Inc)` | Of all extracted items, how many were correct? |
 | **Recall** | `Cor / (Cor + Mis + Inc)` | Of all labeled items, how many were correctly extracted? |
+| **Specificity** | `TN / (TN + Spu)` | Scalar fields only: of all cases labeled as having no information, how many were correctly left empty? |
 
-**Note:** For scalar fields, Inc (incorrect) is used; for list fields, Inc is typically 0 since items are either correct, missing, or spurious.
+**Note:** For scalar fields, Inc (incorrect) is used; for list fields, Inc is typically 0 since items are either correct, missing, or spurious. TN (and therefore specificity) is defined only for scalar fields.
 
 The following formulas apply to both binary classification and structured extraction metrics:
 

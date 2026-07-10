@@ -251,8 +251,8 @@ def test_validate_basic_no_confidence():
         'Precision: fruits', 'Recall: fruits', 'F1 score: fruits', 'F2 score: fruits',
         # color group (non-binary)
         'color', 'Res: color', 'Res: color confidence', 'Res: color justification',
-        'Cor: color', 'Inc: color', 'Mis: color', 'Spu: color', 
-        'Cor: color items', 'Inc: color items', 'Mis: color items', 'Spu: color items', 
+        'Cor: color', 'Inc: color', 'Mis: color', 'Spu: color', 'TN: color',
+        'Cor: color items', 'Inc: color items', 'Mis: color items', 'Spu: color items',
         # system columns
         'Sys: from cache', 'Sys: exception', 'Sys: time taken'
     ]
@@ -273,6 +273,16 @@ def test_validate_basic_no_confidence():
     assert res_df.loc[1, 'Inc: color'] == 1
     assert res_df.loc[2, 'Spu: color'] == 1
     assert res_df.loc[3, 'Mis: color'] == 1
+
+    # --- Per-case TN for the scalar field ---
+    # TN = 1 only when the label is '-' (no information) AND the prediction is empty
+    assert res_df.loc[4, 'TN: color'] == 1   # label '-', prediction ''
+    assert res_df.loc[5, 'TN: color'] == 1   # label '-', prediction '-'
+    for i in [0, 1, 2, 3, 6]:                # labeled cases with label or prediction present
+        assert res_df.loc[i, 'TN: color'] == 0
+    assert pd.isna(res_df.loc[7, 'TN: color'])  # not labeled -> TN undefined
+    # TN is not defined for list fields
+    assert 'TN: fruits' not in res_df.columns
 
     # --- Verify that confidence column is present in metrics ---
     assert 'confidence' in metrics_df.columns
@@ -307,6 +317,15 @@ def test_validate_basic_no_confidence():
     assert _metric(metrics_df, 'color', 'precision (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'color', 'recall (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'color', 'F1 score (micro)') == pytest.approx(0.5)
+
+    # --- Aggregated TN for the scalar field ---
+    # cases 4 and 5 (label '-', prediction empty) -> TN = 2 = sum of the per-case column,
+    # and specificity uses exactly this TN: TN / (TN + spu) = 2 / 3
+    assert _metric(metrics_df, 'color', 'TN') == 2
+    assert _metric(metrics_df, 'color', 'TN') == res_df['TN: color'].sum()
+    assert _metric(metrics_df, 'color', 'specificity (micro)') == pytest.approx(2/3)
+    # TN stays undefined for list fields
+    assert pd.isna(_metric(metrics_df, 'fruits', 'TN'))
 
     assert metrics_df.loc[metrics_df.field == 'exceptions', 'field-present cases'].iloc[0] == 0
 
@@ -486,7 +505,7 @@ def test_validate_with_none_structure_callback():
         'Precision: fruits', 'Recall: fruits', 'F1 score: fruits', 'F2 score: fruits',
         # color group (non-binary)
         'color', 'Res: color', 'Res: color confidence', 'Res: color justification',
-        'Cor: color', 'Inc: color', 'Mis: color', 'Spu: color', 
+        'Cor: color', 'Inc: color', 'Mis: color', 'Spu: color', 'TN: color',
         'Cor: color items', 'Inc: color items', 'Mis: color items', 'Spu: color items'
     ]
     assert list(res_df.columns) == expected_columns
@@ -543,6 +562,11 @@ def test_validate_with_none_structure_callback():
     assert _metric(metrics_df, 'color', 'precision (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'color', 'recall (micro)') == pytest.approx(0.5)
     assert _metric(metrics_df, 'color', 'F1 score (micro)') == pytest.approx(0.5)
+
+    # --- TN reporting for the scalar field, same data as basic test ---
+    assert _metric(metrics_df, 'color', 'TN') == 2
+    assert _metric(metrics_df, 'color', 'specificity (micro)') == pytest.approx(2/3)
+    assert pd.isna(_metric(metrics_df, 'fruits', 'TN'))
 
     # --- Verify that no system columns from process_all are present ---
     # Since structure_callback was None, process_all was not called, so these shouldn't exist
@@ -634,6 +658,60 @@ def test_validate_fully_labelled_binary_field():
     assert _agg('precision (micro)') == pytest.approx(2/3)
     assert _agg('recall (micro)') == pytest.approx(1.0)
     assert _agg('F1 score (micro)') == pytest.approx(0.8)
+
+def test_scalar_field_tn_reporting():
+    """TN (true negatives) must be reported for scalar fields, per case and
+    aggregated, and the reported TN must be exactly the value used for specificity.
+
+    Per-case definition: TN = 1 iff the case was labeled as "No information" (label '-')
+    AND the prediction is empty. Unlabeled cases have TN undefined (NaN). TN is not
+    defined for list fields.
+    """
+    src = pd.DataFrame({
+        "diagnosis":      ["cancer", "cancer", "cancer", "-",      "-", "-", None],
+        "Res: diagnosis": ["cancer", "other",  "",       "cancer", "",  "-", "cancer"],
+        "drugs":          [["a"],    ["a"],    [],       ["a"],    [],  "-", None],
+        "Res: drugs":     [["a"],    ["b"],    ["a"],    [],       [],  [],  ["a"]],
+    })
+
+    res_df, metrics_df = v.validate(
+        src, ["diagnosis", "drugs"], structure_callback=None, output_folder=None
+    )
+
+    # --- Per-case TN column for the scalar field ---
+    # label present, prediction equal -> Cor, TN=0
+    assert res_df.loc[0, 'Cor: diagnosis'] == 1 and res_df.loc[0, 'TN: diagnosis'] == 0
+    # label present, prediction different -> Inc, TN=0
+    assert res_df.loc[1, 'Inc: diagnosis'] == 1 and res_df.loc[1, 'TN: diagnosis'] == 0
+    # label present, prediction empty -> Mis, TN=0
+    assert res_df.loc[2, 'Mis: diagnosis'] == 1 and res_df.loc[2, 'TN: diagnosis'] == 0
+    # label empty ('-'), prediction present -> Spu, TN=0
+    assert res_df.loc[3, 'Spu: diagnosis'] == 1 and res_df.loc[3, 'TN: diagnosis'] == 0
+    # label empty ('-'), prediction empty -> TN=1
+    assert res_df.loc[4, 'TN: diagnosis'] == 1
+    assert res_df.loc[5, 'TN: diagnosis'] == 1
+    # not labeled -> TN undefined
+    assert pd.isna(res_df.loc[6, 'TN: diagnosis'])
+
+    # --- List fields get no TN columns at all ---
+    assert 'TN: drugs' not in res_df.columns
+    assert 'TN: drugs items' not in res_df.columns
+
+    # --- Aggregated metrics ---
+    diag = metrics_df.loc[metrics_df.field == 'diagnosis'].iloc[0]
+    # aggregate TN is the sum of the per-case column (rows 4 and 5)
+    assert diag['TN'] == 2
+    assert diag['TN'] == res_df['TN: diagnosis'].sum()
+    # matches the label-empty accounting: labeled(6) - field-present(3) - spu(1) = 2
+    assert diag['TN'] == diag['labeled cases'] - diag['field-present cases'] - diag['spu']
+    # specificity uses exactly the reported TN: TN / (TN + spu) = 2 / (2 + 1)
+    assert diag['specificity (micro)'] == pytest.approx(2/3)
+
+    # TN stays undefined for list fields in the metrics too
+    drugs = metrics_df.loc[metrics_df.field == 'drugs'].iloc[0]
+    assert pd.isna(drugs['TN'])
+    assert pd.isna(drugs['specificity (micro)'])
+
 
 def test_reorder_result_columns():
     """Test that _reorder_result_columns groups columns with the same base name together."""
