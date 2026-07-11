@@ -93,9 +93,10 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
     # TN is only defined for scalar fields, so list fields never get a 'TN: ' column.
     list_fields = {}
     for field in fields:
-        is_list = df[field].apply(lambda v: isinstance(v, list)).any()
-        if not is_list and 'Res: ' + field in df.columns:
-            is_list = df['Res: ' + field].apply(lambda v: isinstance(v, list)).any()
+        is_list = df[field].map(type).eq(list).any()
+        res_col = 'Res: ' + field
+        if not is_list and res_col in df.columns:
+            is_list = df[res_col].map(type).eq(list).any()
         list_fields[field] = is_list
 
     # Create a list to store modified rows

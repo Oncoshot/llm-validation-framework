@@ -158,7 +158,7 @@ def test_compare_results_all_mixed_fields():
     for i in [0, 1, 2, 3, 6]:                     # label or prediction present
         assert res_df.loc[i, 'TN: color'] == 0
     assert _is_none_or_nan(res_df.loc[7, 'TN: color'])  # not labeled -> undefined
-   # TN is not defined for list fields
+    # TN is not defined for list fields
     assert 'TN: fruits' not in res_df.columns
 
     # Ensure orphan column passed through unchanged
