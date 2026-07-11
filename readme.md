@@ -41,14 +41,14 @@ python runme.py
 
 Processes the included [samples.csv](samples.csv) (14 test cases covering all validation scenarios) and outputs timestamped results to `validation_results/samples/`:
 
-- **[Results CSV](validation_results/samples/2026-02-23%2012-42-40%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
-- **[Metrics CSV](validation_results/samples/2026-02-23%2012-42-40%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
-- **[CI Metrics CSV](validation_results/samples/2026-02-23%2012-42-40%20CI%20metrics.csv)** - Confidence intervals for metrics
+- **[Results CSV](validation_results/samples/2026-07-11%2006-00-10%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
+- **[Metrics CSV](validation_results/samples/2026-07-11%2006-00-10%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
+- **[CI Metrics CSV](validation_results/samples/2026-07-11%2006-00-10%20CI%20metrics.csv)** - Confidence intervals for metrics
 
 | Rows | Field Type | Test Scenarios |
 |------|------------|----------------|
 | **1-4** | Binary (`Has metastasis`) | True Positive, True Negative, False Positive, False Negative |
-| **5-9** | Scalar (`Diagnosis`, `Histology`) | Correct, incorrect, missing, spurious, and empty extractions |
+| **5-9** | Scalar (`Diagnosis`, `Histology`) | Correct, incorrect, missing, spurious, and correct-empty (TN) extractions |
 | **10-14** | List (`Treatment Drugs`, `Test Results`) | Perfect match, spurious items, missing items, correct empty, mixed results |
 
 ## 📊 Usage Modes
@@ -58,7 +58,7 @@ When you have LLM predictions in `Res: {Field Name}` columns:
 
 ```python
 import pandas as pd
-from src.validation import validate
+from llmvalidate import validate
 
 df = pd.read_csv("data.csv", index_col="Patient ID")
 # df must contain: "Field Name" and "Res: Field Name" columns
@@ -74,8 +74,8 @@ results_df, metrics_df = validate(
 ### Mode 2: Live LLM Inference + Validation
 
 ```python
-from src.structured import StructuredResult, StructuredGroup, StructuredField
-from src.utils import flatten_structured_result
+from llmvalidate.structured import StructuredResult, StructuredGroup, StructuredField
+from llmvalidate.utils import flatten_structured_result
 
 def llm_callback(row, i, raw_text_column_name):
     raw_text = row[raw_text_column_name]
@@ -249,7 +249,7 @@ The framework includes statistical confidence interval estimation using non-para
 
 ### Usage
 ```python
-from src.validation import bootstrap_CI
+from llmvalidate import bootstrap_CI
 
 # After running validation to get results_df
 ci_results = bootstrap_CI(
@@ -330,7 +330,7 @@ pip install -r requirements.txt
 pytest  
 
 # Run with coverage reporting
-pytest --cov=src
+pytest --cov=llmvalidate
 
 # Run specific test modules
 pytest tests/validate_test.py              # Core validation logic
