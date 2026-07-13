@@ -169,7 +169,7 @@ The framework generates two timestamped CSV files for each validation run:
 - `TP/FP/FN/TN: {Field}` - Confusion matrix counts (1 or 0 per row)
 
 **Non-Binary Fields:**  
-- `Cor/Inc/Mis/Spu/TN: {Field}` - Item counts per row
+- `Cor/Mis/Spu: {Field}` - Item counts per row (Inc and TN are None for list fields)
 - `Cor/Inc/Mis/Spu: {Field} items` - Actual item lists
 - `Precision/Recall/F1/F2: {Field}` - Per-row metrics (list fields only)
 
@@ -191,7 +191,12 @@ The framework generates two timestamped CSV files for each validation run:
 
 **Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `TN`, `precision/recall/F1/F2/specificity (micro)`, `precision/recall/F1/F2 (macro)`
 
+Applicability: `cor`, `mis`, `spu` and the `(micro)` precision/recall/F-scores apply to all non-binary fields; `inc`, `TN` and `specificity (micro)` are meaningful for **scalar fields only**; the `(macro)` metrics are averages of the per-row metrics and exist for **list fields only**.
+
 ## ⚡ Performance Metrics Explained
+
+![How counts and metrics are defined per field type: confusion matrix for binary fields; Cor/Inc/Mis/Spu/TN matrix for scalar fields; Cor/Mis/Spu set overlap for list fields — with the precision, recall and specificity formulas for each](metrics.png)
+
 ### Binary Classification Metrics
 
 For fields with True/False values (e.g., "Has metastasis"):
@@ -232,7 +237,7 @@ For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
 | **Recall** | `Cor / (Cor + Mis + Inc)` | Of all labeled items, how many were correctly extracted? |
 | **Specificity** | `TN / (TN + Spu)` | Scalar fields only: of all cases labeled as having no information, how many were correctly left empty? |
 
-**Note:** For scalar fields, Inc (incorrect) is used; for list fields, Inc is typically 0 since items are either correct, missing, or spurious. TN (and therefore specificity) is defined only for scalar fields.
+**Note:** Inc and TN (and therefore specificity) are defined only for scalar fields. For list fields, extracted items are always classified as correct, missing, or spurious — Inc stays empty and no TN column is emitted.
 
 The following formulas apply to both binary classification and structured extraction metrics:
 

@@ -75,11 +75,11 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
 
         Returns pandas data frame same as df but with added columns:
             'Cor: ' for Correct
-            'Inc: ' for Incorrect
+            'Inc: ' for Incorrect (scalar fields; for list fields only when 'parents' is provided)
             'Mis: ' for Missing
             'Spu: ' for Spurious
-            'Par: ' for Partial
-            'TN: ' for True Negative
+            'Par: ' for Partial (only when 'parents' is provided)
+            'TN: ' for True Negative (scalar fields only; not defined for list fields)
     """
 
     fields = [f for f in fields if f in df] #ignore fields which are not in columns (they may be added later by comparison_callback)
