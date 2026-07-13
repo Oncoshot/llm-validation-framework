@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.6.0 (2026-07-13)
+
+### Documentation
+
+- ONC-12314 reference medRxiv preprint in readme
+  ([`101ef22`](https://github.com/Oncoshot/llm-validation-framework/commit/101ef221cc5c8fd75c727ad1d74e667be29d6750))
+
+### Features
+
+- ONC-12315 update docs
+  ([`22e924b`](https://github.com/Oncoshot/llm-validation-framework/commit/22e924b757974d8c925d17e8a97bc7947619e1cc))
+
+
 ## v0.5.0 (2026-07-08)
 
 ### Chores
