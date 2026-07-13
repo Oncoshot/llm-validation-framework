@@ -297,7 +297,7 @@ def test_validate_basic_no_confidence():
     assert _metric(metrics_df, 'flag', 'precision (micro)') == pytest.approx(2/3)
     assert _metric(metrics_df, 'flag', 'recall (micro)') == pytest.approx(2/5)
     assert _metric(metrics_df, 'flag', 'F1 score (micro)') == pytest.approx(0.5)
-    assert _metric(metrics_df, 'flag', 'accuracy (micro)') == pytest.approx(0.5)
+    assert _metric(metrics_df, 'flag', 'accuracy') == pytest.approx(0.5)
 
     assert _metric(metrics_df, 'fruits', 'labeled cases') == 7
     assert _metric(metrics_df, 'fruits', 'field-present cases') == 5
@@ -323,7 +323,7 @@ def test_validate_basic_no_confidence():
     # and specificity uses exactly this TN: TN / (TN + spu) = 2 / 3
     assert _metric(metrics_df, 'color', 'TN') == 2
     assert _metric(metrics_df, 'color', 'TN') == res_df['TN: color'].sum()
-    assert _metric(metrics_df, 'color', 'specificity (micro)') == pytest.approx(2/3)
+    assert _metric(metrics_df, 'color', 'specificity') == pytest.approx(2/3)
     # TN stays undefined for list fields
     assert pd.isna(_metric(metrics_df, 'fruits', 'TN'))
 
@@ -542,7 +542,7 @@ def test_validate_with_none_structure_callback():
     assert _metric(metrics_df, 'flag', 'precision (micro)') == pytest.approx(2/3)
     assert _metric(metrics_df, 'flag', 'recall (micro)') == pytest.approx(2/5)
     assert _metric(metrics_df, 'flag', 'F1 score (micro)') == pytest.approx(0.5)
-    assert _metric(metrics_df, 'flag', 'accuracy (micro)') == pytest.approx(0.5)
+    assert _metric(metrics_df, 'flag', 'accuracy') == pytest.approx(0.5)
 
     assert _metric(metrics_df, 'fruits', 'labeled cases') == 7
     assert _metric(metrics_df, 'fruits', 'field-present cases') == 5
@@ -565,7 +565,7 @@ def test_validate_with_none_structure_callback():
 
     # --- TN reporting for the scalar field, same data as basic test ---
     assert _metric(metrics_df, 'color', 'TN') == 2
-    assert _metric(metrics_df, 'color', 'specificity (micro)') == pytest.approx(2/3)
+    assert _metric(metrics_df, 'color', 'specificity') == pytest.approx(2/3)
     assert pd.isna(_metric(metrics_df, 'fruits', 'TN'))
 
     # --- Verify that no system columns from process_all are present ---
@@ -705,12 +705,12 @@ def test_scalar_field_tn_reporting():
     # matches the label-empty accounting: labeled(6) - field-present(3) - spu(1) = 2
     assert diag['TN'] == diag['labeled cases'] - diag['field-present cases'] - diag['spu']
     # specificity uses exactly the reported TN: TN / (TN + spu) = 2 / (2 + 1)
-    assert diag['specificity (micro)'] == pytest.approx(2/3)
+    assert diag['specificity'] == pytest.approx(2/3)
 
     # TN stays undefined for list fields in the metrics too
     drugs = metrics_df.loc[metrics_df.field == 'drugs'].iloc[0]
     assert pd.isna(drugs['TN'])
-    assert pd.isna(drugs['specificity (micro)'])
+    assert pd.isna(drugs['specificity'])
 
 
 def test_reorder_result_columns():

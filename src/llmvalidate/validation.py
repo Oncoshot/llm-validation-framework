@@ -292,7 +292,7 @@ def get_metrics(res_df, fields):
         'labeled cases': labeled_cases,
         'field-present cases': exceptions_no,
         'TP': None, 'TN': None, 'FP': None, 'FN': None,
-        'precision (micro)': None, 'recall (micro)': None, 'F1 score (micro)': None, 'F2 score (micro)': None, 'accuracy (micro)': None, 'specificity (micro)': None,
+        'precision (micro)': None, 'recall (micro)': None, 'F1 score (micro)': None, 'F2 score (micro)': None, 'accuracy': None, 'specificity': None,
         'cor': None, 'inc': None, 'mis': None, 'spu': None, 'par': None,
         'precision (macro)': None, 'recall (macro)': None, 'F1 score (macro)': None, 'F2 score (macro)': None
     })
@@ -384,8 +384,8 @@ def get_metrics(res_df, fields):
                 'recall (micro)': recall_micro,
                 'F1 score (micro)': f1_score_micro,
                 'F2 score (micro)': f2_score_micro,
-                'accuracy (micro)': accuracy_micro,
-                'specificity (micro)': specificity_micro,
+                'accuracy': accuracy_micro,
+                'specificity': specificity_micro,
                 'cor': cor,
                 'inc': inc,
                 'mis': mis,

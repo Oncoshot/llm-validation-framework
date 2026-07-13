@@ -1,10 +1,10 @@
 # LLM Validation Framework
 
-[![CI](https://github.com/oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=master)](https://github.com/oncoshot/llm-validation-framework/actions)
+[![CI](https://github.com/Oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=master)](https://github.com/Oncoshot/llm-validation-framework/actions)
 [![PyPI version](https://img.shields.io/pypi/v/llmvalidate.svg)](https://pypi.org/project/llmvalidate/)
 [![Python versions](https://img.shields.io/pypi/pyversions/llmvalidate.svg)](https://pypi.org/project/llmvalidate/)
-[![License](https://img.shields.io/github/license/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/stargazers)
+[![License](https://img.shields.io/github/license/Oncoshot/llm-validation-framework.svg)](https://github.com/Oncoshot/llm-validation-framework/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Oncoshot/llm-validation-framework.svg)](https://github.com/Oncoshot/llm-validation-framework/stargazers)
 
 A comprehensive Python framework for evaluating LLM-extracted structured data against ground truth labels. Supports binary classification, scalar values, and list fields with detailed performance metrics, confidence-based evaluation, and statistical uncertainty quantification via non-parametric bootstrap confidence intervals.
 
@@ -16,9 +16,10 @@ The methodology behind this framework is described in a medRxiv preprint:
 ## ✨ Key Features
 
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
+- **Coded field support** - Score a value together with its code (ICD-10 / ICD-O-3, RxNorm) as two independent facets
 - **Partial labeling support** - Handle datasets where different cases have labels for different subsets of fields
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
-- **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity with both micro and macro aggregation
+- **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity, with micro and macro aggregation where applicable
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
 - **Statistical uncertainty** - Non-parametric bootstrap confidence intervals for all performance metrics
 - **Production ready** - Parallel processing, intelligent caching, detailed progress tracking
@@ -41,9 +42,9 @@ python runme.py
 
 Processes the included [samples.csv](samples.csv) (14 test cases covering all validation scenarios) and outputs timestamped results to `validation_results/samples/`:
 
-- **[Results CSV](validation_results/samples/2026-07-11%2006-00-10%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
-- **[Metrics CSV](validation_results/samples/2026-07-11%2006-00-10%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
-- **[CI Metrics CSV](validation_results/samples/2026-07-11%2006-00-10%20CI%20metrics.csv)** - Confidence intervals for metrics
+- **[Results CSV](validation_results/samples/2026-07-13%2001-12-18%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
+- **[Metrics CSV](validation_results/samples/2026-07-13%2001-12-18%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
+- **[CI Metrics CSV](validation_results/samples/2026-07-13%2001-12-18%20CI%20metrics.csv)** - Confidence intervals for metrics
 
 | Rows | Field Type | Test Scenarios |
 |------|------------|----------------|
@@ -145,6 +146,14 @@ with the `-value` / `-code` label columns.
 - **`null/empty/NaN`** = Field not labeled/evaluated (supports partial labeling where different cases may have labels for different field subsets)
 - **Lists** - Can be Python lists `["a", "b"]` or stringified `"['a', 'b']"` (auto-converted)
 
+The `"-"`-vs-empty distinction above applies to **label** columns only. In **prediction** (`Res:`)
+columns there is no "not evaluated" state: `"-"`, `""`, `null`/`NaN`, whitespace-only strings and
+`[]` are all treated identically as "nothing extracted" (scoring Mis against a labeled value, or
+TN when the label is `"-"`). We still recommend emitting `"-"` uniformly, to keep predictions
+symmetric with labels. **Exception — binary fields:** predictions must be an explicit
+`True`/`False`; an empty prediction is "not True / not False", so it scores FN against a `True`
+label and **FP** against a `False` label.
+
 ### Partial Labeling Support
 The framework supports partial labeling scenarios where:
 - Not every case needs labels for every field
@@ -155,7 +164,7 @@ The framework supports partial labeling scenarios where:
 
 ## 📈 Output Files
 
-The framework generates two timestamped CSV files for each validation run:
+A `validate()` run generates two timestamped CSV files (a third, CI metrics, is added when you also run `bootstrap_CI` — see the demo above):
 
 ### 1. Results CSV (`YYYY-MM-DD HH-MM-SS results.csv`)
 **Row-level analysis** with detailed per-case metrics:
@@ -189,9 +198,9 @@ The framework generates two timestamped CSV files for each validation run:
 
 **Binary Metrics:** `TP`, `TN`, `FP`, `FN`, `precision`, `recall`, `F1/F2`, `accuracy`, `specificity`
 
-**Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `TN`, `precision/recall/F1/F2/specificity (micro)`, `precision/recall/F1/F2 (macro)`
+**Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `TN`, `precision/recall/F1/F2 (micro and macro)`, `specificity`
 
-Applicability: `cor`, `mis`, `spu` and the `(micro)` precision/recall/F-scores apply to all non-binary fields; `inc`, `TN` and `specificity (micro)` are meaningful for **scalar fields only**; the `(macro)` metrics are averages of the per-row metrics and exist for **list fields only**.
+Applicability: `cor`, `mis`, `spu` and the `(micro)` precision/recall/F-scores apply to all non-binary fields; `inc`, `TN` and `specificity` are meaningful for **scalar fields only**; the `(macro)` metrics are averages of the per-row metrics and exist for **list fields only**. `accuracy` and `specificity` carry no `(micro)`/`(macro)` tag: they are only ever computed one way (pooled counts), since a per-row version would be a 0/1 indicator whose average equals the pooled value.
 
 ## ⚡ Performance Metrics Explained
 
