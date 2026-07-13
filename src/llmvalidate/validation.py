@@ -75,10 +75,11 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
 
         Returns pandas data frame same as df but with added columns:
             'Cor: ' for Correct
-            'Inc: ' for Incorrect
+            'Inc: ' for Incorrect (scalar fields; for list fields only when 'parents' is provided)
             'Mis: ' for Missing
             'Spu: ' for Spurious
-            'Par: ' for Partial
+            'Par: ' for Partial (only when 'parents' is provided)
+            'TN: ' for True Negative (scalar fields only; not defined for list fields)
     """
 
     fields = [f for f in fields if f in df] #ignore fields which are not in columns (they may be added later by comparison_callback)
@@ -87,6 +88,16 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
     binary_fields = {}
     for field in fields:
         binary_fields[field] = pd.api.types.is_bool_dtype(pd.api.types.infer_dtype(df[field].dropna()))
+
+    # Determine which fields are list fields (any label or result value is a list).
+    # TN is only defined for scalar fields, so list fields never get a 'TN: ' column.
+    list_fields = {}
+    for field in fields:
+        is_list = df[field].map(type).eq(list).any()
+        res_col = 'Res: ' + field
+        if not is_list and res_col in df.columns:
+            is_list = df[res_col].map(type).eq(list).any()
+        list_fields[field] = is_list
 
     # Create a list to store modified rows
     modified_rows = []
@@ -133,6 +144,23 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
                     #we don't want useless columns if no parents anyway
                     del res['Partial']      #partial appear only if parent match
                     del res_items['Partial']
+
+                if not list_fields[field]:
+                    # Scalar field: report per-case TN so true negatives (field correctly
+                    # left empty) are visible row by row. TN = 1 if the case was labeled
+                    # as "No information" (label '-') AND the prediction is empty.
+                    # None (undefined) when the case was not labeled for this field.
+                    # TN is not defined for list fields (see get_metrics).
+                    if res['Correct'] is None:
+                        row['TN: ' + field] = None
+                        #row['TN: ' + field + ' items'] = None
+                    else:
+                        TN_case = 1 if (is_scalar_empty(normalize(expected))
+                                        and is_scalar_empty(normalize(actual))) else 0
+                        row['TN: ' + field] = TN_case
+                        # a TN case has no extracted item: the matched "item" is the
+                        # no-information marker itself therefore pointless to add
+                        # row['TN: ' + field + ' items'] = ['-'] if TN_case else []
 
             # Iterate over the key-value pairs in the result dictionary
             for key, value in res.items():
@@ -264,7 +292,7 @@ def get_metrics(res_df, fields):
         'labeled cases': labeled_cases,
         'field-present cases': exceptions_no,
         'TP': None, 'TN': None, 'FP': None, 'FN': None,
-        'precision (micro)': None, 'recall (micro)': None, 'F1 score (micro)': None, 'F2 score (micro)': None, 'accuracy (micro)': None, 'specificity (micro)': None,
+        'precision (micro)': None, 'recall (micro)': None, 'F1 score (micro)': None, 'F2 score (micro)': None, 'accuracy': None, 'specificity': None,
         'cor': None, 'inc': None, 'mis': None, 'spu': None, 'par': None,
         'precision (macro)': None, 'recall (macro)': None, 'F1 score (macro)': None, 'F2 score (macro)': None
     })
@@ -330,6 +358,7 @@ def get_metrics(res_df, fields):
                 mis = field_df['Mis: ' + field].sum()
                 spu = field_df['Spu: ' + field].sum()
                 par = field_df['Par: ' + field].sum() if 'Par: ' + field in field_df else None
+                TN = field_df['TN: ' + field].sum() if 'TN: ' + field in field_df else None
 
                 if 'Precision: ' + field in field_df:
                     # if Precision present it means that it is a list field
@@ -337,15 +366,8 @@ def get_metrics(res_df, fields):
                     recall_macro = field_df['Recall: ' + field].mean()
                     f1_score_macro = field_df['F1 score: ' + field].mean()
                     f2_score_macro = field_df['F2 score: ' + field].mean()
-
-                    # TN is not defined for list values (e.g. label ['apple'] and prediction ['orange', 'banana'] will produce SPU=2)
-                    TN_field = None
-                else:
-                    # scalar field
-                    TN_field = labeled_cases - field_present_cases - spu
-                
                 precision_micro, recall_micro, f1_score_micro, f2_score_micro, specificity_micro = calculate_metrics(
-                    cor, par or 0, inc or 0, spu, mis, TN_field
+                    cor, par or 0, inc or 0, spu, mis, TN
                 )
 
             # Append computed row as a dictionary
@@ -362,8 +384,8 @@ def get_metrics(res_df, fields):
                 'recall (micro)': recall_micro,
                 'F1 score (micro)': f1_score_micro,
                 'F2 score (micro)': f2_score_micro,
-                'accuracy (micro)': accuracy_micro,
-                'specificity (micro)': specificity_micro,
+                'accuracy': accuracy_micro,
+                'specificity': specificity_micro,
                 'cor': cor,
                 'inc': inc,
                 'mis': mis,
@@ -613,7 +635,7 @@ def _reorder_result_columns(df: pd.DataFrame) -> pd.DataFrame:
     res_cols_all = [c for c in cols if c.startswith('Res: ')]
 
     metric_prefixes_binary_counts = ["TP: ", "FP: ", "FN: ", "TN: "]
-    metric_prefixes_non_binary_counts = ["Cor: ", "Inc: ", "Mis: ", "Spu: ", "Par: "]
+    metric_prefixes_non_binary_counts = ["Cor: ", "Inc: ", "Mis: ", "Spu: ", "Par: ", "TN: "]
     metric_prefixes = ["Precision: ", "Recall: ", "Accuracy: ", "F1 score: ", "F2 score: ", "Specificity: "]
 
     metric_prefixes_all = metric_prefixes_binary_counts + metric_prefixes_non_binary_counts + metric_prefixes

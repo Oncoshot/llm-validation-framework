@@ -112,7 +112,7 @@ def test_bootstrap_CI_binary_field():
     
     # Check that binary metrics are included
     binary_metrics = ['TP', 'FP', 'FN', 'TN', 'precision (micro)', 'recall (micro)', 
-                     'F1 score (micro)', 'F2 score (micro)', 'accuracy (micro)', 'specificity (micro)']
+                     'F1 score (micro)', 'F2 score (micro)', 'accuracy', 'specificity']
     
     for metric in binary_metrics:
         assert f'{metric}: mean' in result.columns

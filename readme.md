@@ -1,10 +1,10 @@
 # LLM Validation Framework
 
-[![CI](https://github.com/oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=master)](https://github.com/oncoshot/llm-validation-framework/actions)
+[![CI](https://github.com/Oncoshot/llm-validation-framework/actions/workflows/ci-release.yml/badge.svg?branch=master)](https://github.com/Oncoshot/llm-validation-framework/actions)
 [![PyPI version](https://img.shields.io/pypi/v/llmvalidate.svg)](https://pypi.org/project/llmvalidate/)
 [![Python versions](https://img.shields.io/pypi/pyversions/llmvalidate.svg)](https://pypi.org/project/llmvalidate/)
-[![License](https://img.shields.io/github/license/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/oncoshot/llm-validation-framework.svg)](https://github.com/oncoshot/llm-validation-framework/stargazers)
+[![License](https://img.shields.io/github/license/Oncoshot/llm-validation-framework.svg)](https://github.com/Oncoshot/llm-validation-framework/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Oncoshot/llm-validation-framework.svg)](https://github.com/Oncoshot/llm-validation-framework/stargazers)
 
 A comprehensive Python framework for evaluating LLM-extracted structured data against ground truth labels. Supports binary classification, scalar values, and list fields with detailed performance metrics, confidence-based evaluation, and statistical uncertainty quantification via non-parametric bootstrap confidence intervals.
 
@@ -16,9 +16,10 @@ The methodology behind this framework is described in a medRxiv preprint:
 ## ✨ Key Features
 
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
+- **Coded field support** - Score a value together with its code (ICD-10 / ICD-O-3, RxNorm) as two independent facets
 - **Partial labeling support** - Handle datasets where different cases have labels for different subsets of fields
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
-- **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity with both micro and macro aggregation
+- **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity, with micro and macro aggregation where applicable
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
 - **Statistical uncertainty** - Non-parametric bootstrap confidence intervals for all performance metrics
 - **Production ready** - Parallel processing, intelligent caching, detailed progress tracking
@@ -41,14 +42,14 @@ python runme.py
 
 Processes the included [samples.csv](samples.csv) (14 test cases covering all validation scenarios) and outputs timestamped results to `validation_results/samples/`:
 
-- **[Results CSV](validation_results/samples/2026-02-23%2012-42-40%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
-- **[Metrics CSV](validation_results/samples/2026-02-23%2012-42-40%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
-- **[CI Metrics CSV](validation_results/samples/2026-02-23%2012-42-40%20CI%20metrics.csv)** - Confidence intervals for metrics
+- **[Results CSV](validation_results/samples/2026-07-13%2001-12-18%20results.csv)** - Row-by-row comparison with confusion matrix counts and item-level details   
+- **[Metrics CSV](validation_results/samples/2026-07-13%2001-12-18%20metrics.csv)** - Aggregated performance statistics with confidence breakdowns
+- **[CI Metrics CSV](validation_results/samples/2026-07-13%2001-12-18%20CI%20metrics.csv)** - Confidence intervals for metrics
 
 | Rows | Field Type | Test Scenarios |
 |------|------------|----------------|
 | **1-4** | Binary (`Has metastasis`) | True Positive, True Negative, False Positive, False Negative |
-| **5-9** | Scalar (`Diagnosis`, `Histology`) | Correct, incorrect, missing, spurious, and empty extractions |
+| **5-9** | Scalar (`Diagnosis`, `Histology`) | Correct, incorrect, missing, spurious, and correct-empty (TN) extractions |
 | **10-14** | List (`Treatment Drugs`, `Test Results`) | Perfect match, spurious items, missing items, correct empty, mixed results |
 
 ## 📊 Usage Modes
@@ -58,7 +59,7 @@ When you have LLM predictions in `Res: {Field Name}` columns:
 
 ```python
 import pandas as pd
-from src.validation import validate
+from llmvalidate import validate
 
 df = pd.read_csv("data.csv", index_col="Patient ID")
 # df must contain: "Field Name" and "Res: Field Name" columns
@@ -74,8 +75,8 @@ results_df, metrics_df = validate(
 ### Mode 2: Live LLM Inference + Validation
 
 ```python
-from src.structured import StructuredResult, StructuredGroup, StructuredField
-from src.utils import flatten_structured_result
+from llmvalidate.structured import StructuredResult, StructuredGroup, StructuredField
+from llmvalidate.utils import flatten_structured_result
 
 def llm_callback(row, i, raw_text_column_name):
     raw_text = row[raw_text_column_name]
@@ -145,6 +146,14 @@ with the `-value` / `-code` label columns.
 - **`null/empty/NaN`** = Field not labeled/evaluated (supports partial labeling where different cases may have labels for different field subsets)
 - **Lists** - Can be Python lists `["a", "b"]` or stringified `"['a', 'b']"` (auto-converted)
 
+The `"-"`-vs-empty distinction above applies to **label** columns only. In **prediction** (`Res:`)
+columns there is no "not evaluated" state: `"-"`, `""`, `null`/`NaN`, whitespace-only strings and
+`[]` are all treated identically as "nothing extracted" (scoring Mis against a labeled value, or
+TN when the label is `"-"`). We still recommend emitting `"-"` uniformly, to keep predictions
+symmetric with labels. **Exception — binary fields:** predictions must be an explicit
+`True`/`False`; an empty prediction is "not True / not False", so it scores FN against a `True`
+label and **FP** against a `False` label.
+
 ### Partial Labeling Support
 The framework supports partial labeling scenarios where:
 - Not every case needs labels for every field
@@ -155,7 +164,7 @@ The framework supports partial labeling scenarios where:
 
 ## 📈 Output Files
 
-The framework generates two timestamped CSV files for each validation run:
+A `validate()` run generates two timestamped CSV files (a third, CI metrics, is added when you also run `bootstrap_CI` — see the demo above):
 
 ### 1. Results CSV (`YYYY-MM-DD HH-MM-SS results.csv`)
 **Row-level analysis** with detailed per-case metrics:
@@ -169,7 +178,7 @@ The framework generates two timestamped CSV files for each validation run:
 - `TP/FP/FN/TN: {Field}` - Confusion matrix counts (1 or 0 per row)
 
 **Non-Binary Fields:**  
-- `Cor/Inc/Mis/Spu: {Field}` - Item counts per row
+- `Cor/Mis/Spu: {Field}` - Item counts per row (Inc and TN are None for list fields)
 - `Cor/Inc/Mis/Spu: {Field} items` - Actual item lists
 - `Precision/Recall/F1/F2: {Field}` - Per-row metrics (list fields only)
 
@@ -189,9 +198,14 @@ The framework generates two timestamped CSV files for each validation run:
 
 **Binary Metrics:** `TP`, `TN`, `FP`, `FN`, `precision`, `recall`, `F1/F2`, `accuracy`, `specificity`
 
-**Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `precision/recall/F1/F2 (micro)`, `precision/recall/F1/F2 (macro)`
+**Non-Binary Metrics:** `cor`, `inc`, `mis`, `spu`, `TN`, `precision/recall/F1/F2 (micro and macro)`, `specificity`
+
+Applicability: `cor`, `mis`, `spu` and the `(micro)` precision/recall/F-scores apply to all non-binary fields; `inc`, `TN` and `specificity` are meaningful for **scalar fields only**; the `(macro)` metrics are averages of the per-row metrics and exist for **list fields only**. `accuracy` and `specificity` carry no `(micro)`/`(macro)` tag: they are only ever computed one way (pooled counts), since a per-row version would be a 0/1 indicator whose average equals the pooled value.
 
 ## ⚡ Performance Metrics Explained
+
+![How counts and metrics are defined per field type: confusion matrix for binary fields; Cor/Inc/Mis/Spu/TN matrix for scalar fields; Cor/Mis/Spu set overlap for list fields — with the precision, recall and specificity formulas for each](metrics.png)
+
 ### Binary Classification Metrics
 
 For fields with True/False values (e.g., "Has metastasis"):
@@ -222,6 +236,7 @@ For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
 | **Missing (Mis)** | Items present in label but not extracted | (Same example) → Mis=1 (DrugB missing) |
 | **Spurious (Spu)** | Items extracted but not in label | Label: `["DrugA"]`, Prediction: `["DrugA", "DrugC"]` → Spu=1 |
 | **Incorrect (Inc)** | Wrong values for scalar fields | Label: `"Cancer"`, Prediction: `"Diabetes"` → Inc=1 |
+| **True Negative (TN)** | Scalar fields only: field correctly left empty | Label: `"-"`, Prediction: `""`/`"-"` → TN=1 |
 
 #### Structured Extraction Formulas
 
@@ -229,8 +244,9 @@ For scalar and list fields (e.g., "Diagnosis", "Treatment Drugs"):
 |--------|---------|---------|
 | **Precision** | `Cor / (Cor + Spu + Inc)` | Of all extracted items, how many were correct? |
 | **Recall** | `Cor / (Cor + Mis + Inc)` | Of all labeled items, how many were correctly extracted? |
+| **Specificity** | `TN / (TN + Spu)` | Scalar fields only: of all cases labeled as having no information, how many were correctly left empty? |
 
-**Note:** For scalar fields, Inc (incorrect) is used; for list fields, Inc is typically 0 since items are either correct, missing, or spurious.
+**Note:** Inc and TN (and therefore specificity) are defined only for scalar fields. For list fields, extracted items are always classified as correct, missing, or spurious — Inc stays empty and no TN column is emitted.
 
 The following formulas apply to both binary classification and structured extraction metrics:
 
@@ -247,7 +263,7 @@ The framework includes statistical confidence interval estimation using non-para
 
 ### Usage
 ```python
-from src.validation import bootstrap_CI
+from llmvalidate import bootstrap_CI
 
 # After running validation to get results_df
 ci_results = bootstrap_CI(
@@ -328,7 +344,7 @@ pip install -r requirements.txt
 pytest  
 
 # Run with coverage reporting
-pytest --cov=src
+pytest --cov=llmvalidate
 
 # Run specific test modules
 pytest tests/validate_test.py              # Core validation logic
