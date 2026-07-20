@@ -3,7 +3,7 @@ import llmvalidate.validation as v
 import pytest
 import math
 
-@pytest.mark.parametrize("expected, actual, parents, expected_output", [
+@pytest.mark.parametrize("expected, actual, hierarchy, expected_output", [
     # scalar values
     #   expected is not labeled so it does not make sense to compare results
     (None, "", {}, {'Correct': None, 'Incorrect': None, 'Missing': None, 'Spurious': None, 'Partial': None}),
@@ -79,8 +79,8 @@ import math
     ([4], math.nan, {}, {'Correct': [], 'Incorrect': [], 'Missing': [4.0], 'Spurious': [], 'Partial': []}),
     ([4], None, {}, {'Correct': [], 'Incorrect': [], 'Missing': [4.0], 'Spurious': [], 'Partial': []}),
 ])
-def test_compare_results(expected, actual, parents, expected_output):
-    result = v.compare_results(expected, actual, parents)
+def test_compare_results(expected, actual, hierarchy, expected_output):
+    result = v.compare_results(expected, actual, hierarchy)
     
     # For list comparisons, we need to sort the lists to compare them properly since order doesn't matter
     if result['Correct'] is not None:

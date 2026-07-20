@@ -18,6 +18,8 @@ The methodology behind this framework is described in a medRxiv preprint:
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
 - **Coded field support** - Score a value together with its code (ICD-10 / ICD-O-3, RxNorm) as two independent facets
 - **Partial labeling support** - Handle datasets where different cases have labels for different subsets of fields
+- **Parent matching** - Hierarchical dictionaries: a prediction that is the parent of the labeled value scores a partial match (0.5) instead of incorrect. 
+E.g. for ICD-10: `C00` "Malignant neoplasm of lip" is partially correct for label `C00.1` "Malignant neoplasm, external lower lip".
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
 - **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity, with micro and macro aggregation where applicable
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
@@ -180,6 +182,7 @@ A `validate()` run generates two timestamped CSV files (a third, CI metrics, is 
 **Non-Binary Fields:**  
 - `Cor/Mis/Spu: {Field}` - Item counts per row (Inc and TN are None for list fields)
 - `Cor/Inc/Mis/Spu: {Field} items` - Actual item lists
+- `Par: {Field}` / `Par: {Field} items` - Partial-match count and the labeled items whose parent was predicted (only when the field has a `hierarchy` entry; see [Hierarchical / partial match](#hierarchical--partial-match))
 - `Precision/Recall/F1/F2: {Field}` - Per-row metrics (list fields only)
 
 **System Columns:**
@@ -256,6 +259,44 @@ The following formulas apply to both binary classification and structured extrac
 | **F2 Score** | `5 × (P × R) / (4P + R)` | Recall-weighted F-score (emphasizes recall over precision) |
 
 Where P = Precision and R = Recall (calculated differently for each metric type).
+
+### Hierarchical / Partial Match
+
+Some concepts are hierarchical: a prediction can be *correct but less specific* than the label
+(e.g. label `TNBC` (Triple Negative Breast Cancer), prediction `BC` (Breast Cancer)). Pass a **per-field** hierarchy to `validate` to credit
+these as **partial** matches instead of outright wrong:
+
+```python
+results_df, metrics_df = validate(
+    source_df=df,
+    fields=["Diagnosis", "Stage"],
+    structure_callback=None,
+    hierarchy={
+        "Diagnosis": {"TNBC": "BC"},   # {child: parent} for this field
+        # fields absent here get no partial matching (default behavior)
+    },
+)
+```
+
+When a prediction equals the **parent** of the labeled child, the case scores as a **Partial**
+(`Par`) worth `0.5` in precision and recall rather than Incorrect:
+
+| Metric | Formula |
+|--------|---------|
+| **Precision** | `(cor + 0.5 × par) / (cor + inc + par + spu)` |
+| **Recall** | `(cor + 0.5 × par) / (cor + inc + par + mis)` |
+
+A single case that is purely a parent-hit therefore scores `0.5` precision, `0.5` recall → `0.5` F1.
+
+Two semantic properties:
+- **One level only** — only a *direct* parent counts; a grandparent scores as Incorrect.
+- **Direction matters** — credit is asymmetric: it is granted only when the prediction is the
+  parent of the label (less specific than the truth), **not** when the prediction is more
+  specific (a child) than the label.
+
+Output: for each field that has a hierarchy entry, results get a per-row `Par: {Field}` column
+and the metrics table gets a `par` column (aggregated partial count). Fields without a hierarchy
+entry produce identical output to a run with no hierarchy at all (no `Par:`/`Inc:` columns).
 
 ## Bootstrap Confidence Intervals
 

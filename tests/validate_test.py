@@ -713,6 +713,72 @@ def test_scalar_field_tn_reporting():
     assert pd.isna(drugs['specificity'])
 
 
+def test_validate_hierarchy_partial_match():
+    """End-to-end: passing a PER-FIELD hierarchy to validate() (structure_callback=None,
+    results supplied via 'Res: ' columns) makes a parent-of-label prediction score as a
+    Partial worth 0.5 in precision & recall.
+
+    Fields:
+      - 'grade'  : has a hierarchy {'g3': 'high'}; one labeled row where the prediction
+                   'high' is the DIRECT parent of the labeled child 'g3' -> pure partial hit.
+      - 'exact'  : no hierarchy; every row is an exact match -> micro F1 == 1.0.
+      - 'wrong'  : no hierarchy; every row is an unrelated wrong prediction -> Inc, micro 0.
+    """
+    src = pd.DataFrame({
+        'grade':      ['g3',  None, None],
+        'Res: grade': ['high', None, None],
+        'exact':      ['a', 'b', 'c'],
+        'Res: exact': ['a', 'b', 'c'],
+        'wrong':      ['x', 'y', 'm'],
+        'Res: wrong': ['z', 'w', 'n'],
+    })
+
+    res_df, metrics_df = v.validate(
+        src,
+        ['grade', 'exact', 'wrong'],
+        structure_callback=None,
+        output_folder=None,
+        hierarchy={'grade': {'g3': 'high'}},
+    )
+
+    # No confidence columns in this data -> get_metrics drops 'confidence', one row per field.
+    def _agg(field, name):
+        return metrics_df.loc[metrics_df.field == field, name].iloc[0]
+
+    # ---- Per-row: the parent-of-label prediction is a Partial ----
+    assert 'Par: grade' in res_df.columns
+    assert res_df.loc[0, 'Par: grade'] == 1
+    assert res_df.loc[0, 'Cor: grade'] == 0
+    assert res_df.loc[0, 'Inc: grade'] == 0
+
+    # ---- Metrics for the hierarchical field: par reflected, micro F1 == 0.5 ----
+    # Only row0 is labeled: cor=0, par=1, inc=0, spu=0, mis=0
+    # precision = (0 + 0.5*1) / (0 + 0 + 1 + 0) = 0.5
+    # recall    = (0 + 0.5*1) / (0 + 0 + 1 + 0) = 0.5
+    # F1        = 2*0.5*0.5 / (0.5 + 0.5)       = 0.5
+    assert _agg('grade', 'par') == 1
+    assert _agg('grade', 'cor') == 0
+    assert _agg('grade', 'precision (micro)') == pytest.approx(0.5)
+    assert _agg('grade', 'recall (micro)') == pytest.approx(0.5)
+    assert _agg('grade', 'F1 score (micro)') == pytest.approx(0.5)
+
+    # ---- Exact-match field (no hierarchy): scores 1.0, no Par column ----
+    assert 'Par: exact' not in res_df.columns
+    assert res_df.loc[0, 'Cor: exact'] == 1
+    assert _agg('exact', 'cor') == 3
+    assert _agg('exact', 'precision (micro)') == pytest.approx(1.0)
+    assert _agg('exact', 'F1 score (micro)') == pytest.approx(1.0)
+
+    # ---- Wrong field (no hierarchy): scores as Inc / 0, no Par column ----
+    assert 'Par: wrong' not in res_df.columns
+    assert res_df.loc[0, 'Inc: wrong'] == 1
+    assert res_df.loc[0, 'Cor: wrong'] == 0
+    assert _agg('wrong', 'inc') == 3
+    assert _agg('wrong', 'cor') == 0
+    assert _agg('wrong', 'precision (micro)') == pytest.approx(0.0)
+    assert _agg('wrong', 'F1 score (micro)') == 0
+
+
 def test_reorder_result_columns():
     """Test that _reorder_result_columns groups columns with the same base name together."""
     

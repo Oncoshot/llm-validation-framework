@@ -63,22 +63,24 @@ def calculate_binary_metrics(TP, FP, FN, TN):
 
     return precision, recall, f1_score, f2_score, accuracy, specificity
 
-def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_text_column_name: str = "raw_text"):
+def compare_results_all(df, fields, hierarchy={}, comparison_callback=None, raw_text_column_name: str = "raw_text"):
     """ For each case from df calls and for each field from 'fields' compares results with 'Res: '+field
         and adds columns 'Inc: '+field, 'Cor: '+field, 'Mis: '+field, 'Spu: '+field, 'Par: '+field
         Input
             'df' - pandas dataframe with input, labeled data and results in 'Res: ' columns
             'fields' - fields to compare results
-            'parents' - A dictionary where key is a child and value is a parent for partial match
-            - **comparison_callback (callable, optional)**: 
+            'hierarchy' - A PER-FIELD nested dictionary {field_name: {child: parent}} for partial
+                match. Each field is scored against its own {child: parent} map; fields absent from
+                'hierarchy' get no partial matching (default {} = no partial matching for any field).
+            - **comparison_callback (callable, optional)**:
                 A callback function that will be applied to each row to generate comparison results.
 
         Returns pandas data frame same as df but with added columns:
             'Cor: ' for Correct
-            'Inc: ' for Incorrect (scalar fields; for list fields only when 'parents' is provided)
+            'Inc: ' for Incorrect (scalar fields; for list fields only when the field has a hierarchy entry)
             'Mis: ' for Missing
             'Spu: ' for Spurious
-            'Par: ' for Partial (only when 'parents' is provided)
+            'Par: ' for Partial (only when the field has a hierarchy entry)
             'TN: ' for True Negative (scalar fields only; not defined for list fields)
     """
 
@@ -112,12 +114,14 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
 
             actual = row['Res: ' + field]
 
-            if binary_fields[field]: 
+            field_hierarchy = hierarchy.get(field, {})
+
+            if binary_fields[field]:
                 # For binary fields, use the binary comparison function.
                 res = compare_results_binary(expected, actual)
                 res_items = {}
             else:
-                res_items = compare_results(expected, actual, parents)
+                res_items = compare_results(expected, actual, field_hierarchy)
 
                 # Convert lists to counts, preserving None values
                 res = {key: len(value) if value is not None else None for key, value in res_items.items()}
@@ -135,13 +139,13 @@ def compare_results_all(df, fields, parents={}, comparison_callback=None, raw_te
                     row['F1 score: ' + field] = f1_score
                     row['F2 score: ' + field] = f2_score
 
-                    if not parents:
-                        #we don't want useless columns if no parents anyway
+                    if not field_hierarchy:
+                        #we don't want useless columns if no hierarchy for this field anyway
                         del res['Incorrect'] #incorrect appear only if parent mismatch (only for lists)
                         del res_items['Incorrect']
 
-                if not parents:
-                    #we don't want useless columns if no parents anyway
+                if not field_hierarchy:
+                    #we don't want useless columns if no hierarchy for this field anyway
                     del res['Partial']      #partial appear only if parent match
                     del res_items['Partial']
 
@@ -408,7 +412,7 @@ def get_metrics(res_df, fields):
 
     return metrics
 
-def compare_results(expected, actual, parents={}):
+def compare_results(expected, actual, hierarchy={}):
     """
     Compares expected results with actual results, ignoring duplicates.
 
@@ -427,7 +431,7 @@ def compare_results(expected, actual, parents={}):
     Args:
     expected (int, float, str, list): The expected result.
     actual (int, float, str, list): The actual result.
-    parents : A dictionary where key is a child and value is a parent for partial match
+    hierarchy : A flat dictionary where key is a child and value is a parent for partial match
 
     Returns:
     dict: A dictionary with keys 'Correct', 'Incorrect', 'Missing', 'Spurious', and 'Partial', mapping to their respective lists.
@@ -469,7 +473,7 @@ def compare_results(expected, actual, parents={}):
     """
 
     # Convert dictionary keys to casefold for case-insensitive matching
-    parents = {k.casefold(): v.casefold() for k, v in parents.items()}
+    hierarchy = {k.casefold(): v.casefold() for k, v in hierarchy.items()}
 
     output = {'Correct': [], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': []}
 
@@ -480,21 +484,21 @@ def compare_results(expected, actual, parents={}):
         # Convert all elements to lowercase strings for case-insensitive comparison
         # and remove duplicates by converting to sets.
         expected_set = normalize_list(expected)
-        expected_parents_set = {parents[s] for s in expected_set if s in parents}
-        
+        expected_parents_set = {hierarchy[s] for s in expected_set if s in hierarchy}
+
         actual_set = normalize_list(actual)
-        actual_parents_set = {parents[s] for s in actual_set if s in parents}
+        actual_parents_set = {hierarchy[s] for s in actual_set if s in hierarchy}
 
         output['Correct'] = list(expected_set & actual_set)  # matching exactly
 
         for missing in expected_set - actual_set - actual_parents_set:
-            if missing in parents and parents[missing] in actual_set:
+            if missing in hierarchy and hierarchy[missing] in actual_set:
                 output['Partial'].append(missing)  # actual set has parent value therefore Partial
             else:
                 output['Missing'].append(missing)
 
         for spurious in actual_set - expected_set - expected_parents_set:
-            if spurious in parents and parents[spurious] in expected_set:
+            if spurious in hierarchy and hierarchy[spurious] in expected_set:
                 output['Incorrect'].append(spurious)  # expected set has parent value therefore Incorrect
             else:
                 output['Spurious'].append(spurious)
@@ -516,7 +520,7 @@ def compare_results(expected, actual, parents={}):
             output['Spurious'] = [actual]
         elif not is_scalar_empty(expected) and is_scalar_empty(actual):
             output['Missing'] = [expected]
-        elif expected in parents and parents[expected] == actual:
+        elif expected in hierarchy and hierarchy[expected] == actual:
             output['Partial'] = [expected]  # actual value is a parent of expected
         else:
             output['Incorrect'] = [actual]
@@ -820,6 +824,7 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
              file_prefix = datetime.now().strftime("%Y-%m-%d %H-%M-%S"),
              raw_text_column_name = 'raw_text',
              comparison_callback = None,
+             hierarchy = {},
              max_workers: int | None = 1,
              use_threads: bool = True):
     """
@@ -845,10 +850,20 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
         A callback function that will be applied to each row to generate structured predictions.
         If None, assumes that source_df already contains "Res: " columns with results.
 
-    - **comparison_callback (callable, optional)**: 
+    - **comparison_callback (callable, optional)**:
         A callback function that will be applied to each row to generate comparison results.
 
-    - **output_folder (str, optional)**: 
+    - **hierarchy (dict, optional)**:
+        A PER-FIELD nested map ``{field: {child: parent}}`` enabling partial (hierarchical)
+        matching. Default ``{}`` means no partial matching (current behavior). For a given
+        field, when a prediction equals the *parent* of the labeled child (i.e. the prediction
+        is less specific than the truth), it scores as a **Partial** match worth 0.5 in both
+        precision and recall — ``(cor + 0.5*par)/denom`` — instead of Incorrect. Two semantic
+        properties: (1) only DIRECT parent matches (one level) count — a grandparent does not;
+        (2) credit is asymmetric — it is granted only when the prediction is the parent of the
+        label, not when the prediction is more specific (a child) than the label.
+
+    - **output_folder (str, optional)**:
         Directory where the output CSV files will be saved. 
         If not provided, results will only be returned as DataFrames.
 
@@ -917,7 +932,7 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
     
     ###################################
     # Analyse the results and calculate the metrics
-    res_df = compare_results_all(res_df, fields, parents={}, comparison_callback=comparison_callback, raw_text_column_name=raw_text_column_name)
+    res_df = compare_results_all(res_df, fields, hierarchy=hierarchy, comparison_callback=comparison_callback, raw_text_column_name=raw_text_column_name)
 
     # Save results
     if output_folder:
