@@ -3,7 +3,7 @@ import llmvalidate.validation as v
 import pytest
 import math
 
-@pytest.mark.parametrize("expected, actual, parents, expected_output", [
+@pytest.mark.parametrize("expected, actual, hierarchy, expected_output", [
     # scalar values
     #   expected is not labeled so it does not make sense to compare results
     (None, "", {}, {'Correct': None, 'Incorrect': None, 'Missing': None, 'Spurious': None, 'Partial': None}),
@@ -28,6 +28,8 @@ import math
     ("4", "4.0", {}, {'Correct': [4.0], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': []}),
     ('apple', 'tree', { 'Apple': 'Tree' }, {'Correct': [], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': ['apple']}),
     ('tree', 'apple', { 'Apple': 'Tree' }, {'Correct': [], 'Incorrect': ['apple'], 'Missing': [], 'Spurious': [], 'Partial': []}),
+    # numeric-coded hierarchy: keys/values are normalized like expected/actual (not raw casefold)
+    (4, 3, { 4: 3 }, {'Correct': [], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': [4.0]}),
     #   expected is not empty but actual is empty
     ("female", nan, {}, {'Correct': [], 'Incorrect': [], 'Missing': ["female"], 'Spurious': [], 'Partial': []}),
     ("female", None, {}, {'Correct': [], 'Incorrect': [], 'Missing': ["female"], 'Spurious': [], 'Partial': []}),
@@ -79,8 +81,8 @@ import math
     ([4], math.nan, {}, {'Correct': [], 'Incorrect': [], 'Missing': [4.0], 'Spurious': [], 'Partial': []}),
     ([4], None, {}, {'Correct': [], 'Incorrect': [], 'Missing': [4.0], 'Spurious': [], 'Partial': []}),
 ])
-def test_compare_results(expected, actual, parents, expected_output):
-    result = v.compare_results(expected, actual, parents)
+def test_compare_results(expected, actual, hierarchy, expected_output):
+    result = v.compare_results(expected, actual, hierarchy)
     
     # For list comparisons, we need to sort the lists to compare them properly since order doesn't matter
     if result['Correct'] is not None:

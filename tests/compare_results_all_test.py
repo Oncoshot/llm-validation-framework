@@ -173,3 +173,46 @@ def test_compare_results_all_mixed_fields():
     for col in expected_columns:
         assert col in res_df.columns, f"Missing column {col} in compare_results_all output"
 
+
+def test_compare_results_all_per_field_hierarchy():
+    """Hierarchy is PER-FIELD: only the field with a {child: parent} entry gets
+    Par:/Inc: columns; a field without an entry is scored exactly as before (no
+    Par:/Inc: columns)."""
+    df = pd.DataFrame({
+        # hierarchical list field: prediction 'bc' is the parent of the labeled child 'tnbc'
+        'Dx': [['tnbc']],
+        'Res: Dx': [['bc']],
+        # non-hierarchical list field: plain miss + spurious
+        'drugs': [['a']],
+        'Res: drugs': [['b']],
+    })
+
+    res_df = v.compare_results_all(df, ['Dx', 'drugs'], hierarchy={'Dx': {'tnbc': 'bc'}})
+
+    # ---- Hierarchical field: parent-of-label prediction scores Partial ----
+    assert 'Par: Dx' in res_df.columns
+    assert res_df.loc[0, 'Par: Dx'] == 1
+    # exact-match and outright-wrong counts are zero for this single partial hit
+    assert res_df.loc[0, 'Cor: Dx'] == 0
+    assert res_df.loc[0, 'Mis: Dx'] == 0
+    assert res_df.loc[0, 'Spu: Dx'] == 0
+    # Inc column is emitted for a hierarchical list field (here 0 for this case)
+    assert 'Inc: Dx' in res_df.columns
+    assert res_df.loc[0, 'Inc: Dx'] == 0
+
+    # ---- Non-hierarchical field: byte-identical behavior to no-hierarchy ----
+    assert 'Par: drugs' not in res_df.columns
+    assert 'Inc: drugs' not in res_df.columns
+    assert res_df.loc[0, 'Mis: drugs'] == 1
+    assert res_df.loc[0, 'Spu: drugs'] == 1
+
+
+def test_compare_results_all_rejects_non_per_field_hierarchy():
+    """A flat {child: parent} map (or any non-dict value) is rejected up front with a
+    clear TypeError, rather than failing deep in the row loop with a cryptic .items()
+    error. hierarchy must be the per-field shape {field: {child: parent}}."""
+    df = pd.DataFrame({'Dx': [['tnbc']], 'Res: Dx': [['bc']]})
+    with pytest.raises(TypeError, match="per-field"):
+        # flat shape mistakenly passed instead of {'Dx': {'tnbc': 'bc'}}
+        v.compare_results_all(df, ['Dx'], hierarchy={'tnbc': 'bc'})
+
