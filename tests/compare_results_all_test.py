@@ -206,3 +206,13 @@ def test_compare_results_all_per_field_hierarchy():
     assert res_df.loc[0, 'Mis: drugs'] == 1
     assert res_df.loc[0, 'Spu: drugs'] == 1
 
+
+def test_compare_results_all_rejects_non_per_field_hierarchy():
+    """A flat {child: parent} map (or any non-dict value) is rejected up front with a
+    clear TypeError, rather than failing deep in the row loop with a cryptic .items()
+    error. hierarchy must be the per-field shape {field: {child: parent}}."""
+    df = pd.DataFrame({'Dx': [['tnbc']], 'Res: Dx': [['bc']]})
+    with pytest.raises(TypeError, match="per-field"):
+        # flat shape mistakenly passed instead of {'Dx': {'tnbc': 'bc'}}
+        v.compare_results_all(df, ['Dx'], hierarchy={'tnbc': 'bc'})
+

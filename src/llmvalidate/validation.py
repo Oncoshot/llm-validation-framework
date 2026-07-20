@@ -86,6 +86,17 @@ def compare_results_all(df, fields, hierarchy={}, comparison_callback=None, raw_
 
     fields = [f for f in fields if f in df] #ignore fields which are not in columns (they may be added later by comparison_callback)
 
+    # hierarchy is a per-field map {field: {child: parent}}; fail fast with a clear
+    # message if a caller passes a flat {child: parent} (the pre-1.0 shape) or any
+    # non-dict value, rather than a cryptic .items() error deep in the row loop.
+    # None is tolerated per field (treated as "no hierarchy for this field").
+    bad_hierarchy = {f: v for f, v in hierarchy.items() if v is not None and not isinstance(v, dict)}
+    if bad_hierarchy:
+        raise TypeError(
+            "hierarchy must be a per-field map {field: {child: parent}}; "
+            f"these entries are not dicts: {sorted(bad_hierarchy)}"
+        )
+
     # Determine which fields are binary by looking at the unique non-empty expected values.
     binary_fields = {}
     for field in fields:
@@ -114,13 +125,8 @@ def compare_results_all(df, fields, hierarchy={}, comparison_callback=None, raw_
 
             actual = row['Res: ' + field]
 
-            field_hierarchy = hierarchy.get(field, {})
-            if field_hierarchy is None:
-                field_hierarchy = {}
-            elif not isinstance(field_hierarchy, dict):
-                raise TypeError(
-                    f"hierarchy[{field!r}] must be a dict of {{child: parent}}, got {type(field_hierarchy).__name__}"
-                )
+            # Shape already validated up front; None/missing -> no hierarchy for this field.
+            field_hierarchy = hierarchy.get(field) or {}
 
             if binary_fields[field]:
                 # For binary fields, use the binary comparison function.
@@ -478,8 +484,10 @@ def compare_results(expected, actual, hierarchy={}):
                     [a]          None  None  None  None  None
     """
 
-    # Convert dictionary keys to casefold for case-insensitive matching
-    hierarchy = {k.casefold(): v.casefold() for k, v in hierarchy.items()}
+    # Normalize keys/values the same way as expected/actual (float-parse then casefold),
+    # so the hierarchy matches however the compared values were normalized and tolerates
+    # non-string codes (e.g. numeric-coded enums) instead of raising on .casefold().
+    hierarchy = {normalize(k): normalize(v) for k, v in hierarchy.items()}
 
     output = {'Correct': [], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': []}
 
@@ -830,9 +838,9 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
              file_prefix = datetime.now().strftime("%Y-%m-%d %H-%M-%S"),
              raw_text_column_name = 'raw_text',
              comparison_callback = None,
-             hierarchy = {},
              max_workers: int | None = 1,
-             use_threads: bool = True):
+             use_threads: bool = True,
+             hierarchy = {}):
     """
     Performs validation by applying a structuring callback to an input dataset and evaluating performance.
 

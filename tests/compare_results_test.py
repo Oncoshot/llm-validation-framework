@@ -28,6 +28,8 @@ import math
     ("4", "4.0", {}, {'Correct': [4.0], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': []}),
     ('apple', 'tree', { 'Apple': 'Tree' }, {'Correct': [], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': ['apple']}),
     ('tree', 'apple', { 'Apple': 'Tree' }, {'Correct': [], 'Incorrect': ['apple'], 'Missing': [], 'Spurious': [], 'Partial': []}),
+    # numeric-coded hierarchy: keys/values are normalized like expected/actual (not raw casefold)
+    (4, 3, { 4: 3 }, {'Correct': [], 'Incorrect': [], 'Missing': [], 'Spurious': [], 'Partial': [4.0]}),
     #   expected is not empty but actual is empty
     ("female", nan, {}, {'Correct': [], 'Incorrect': [], 'Missing': ["female"], 'Spurious': [], 'Partial': []}),
     ("female", None, {}, {'Correct': [], 'Incorrect': [], 'Missing': ["female"], 'Spurious': [], 'Partial': []}),
