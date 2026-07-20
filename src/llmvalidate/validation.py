@@ -115,6 +115,12 @@ def compare_results_all(df, fields, hierarchy={}, comparison_callback=None, raw_
             actual = row['Res: ' + field]
 
             field_hierarchy = hierarchy.get(field, {})
+            if field_hierarchy is None:
+                field_hierarchy = {}
+            elif not isinstance(field_hierarchy, dict):
+                raise TypeError(
+                    f"hierarchy[{field!r}] must be a dict of {{child: parent}}, got {type(field_hierarchy).__name__}"
+                )
 
             if binary_fields[field]:
                 # For binary fields, use the binary comparison function.
