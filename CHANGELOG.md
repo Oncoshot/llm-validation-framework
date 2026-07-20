@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.7.0 (2026-07-20)
+
+### Bug Fixes
+
+- Harden the public hierarchy parameter
+  ([`b1a879c`](https://github.com/Oncoshot/llm-validation-framework/commit/b1a879c28fb03248f5f27f5c52f4ecb2f4418f8e))
+
+### Features
+
+- Add hierarchical dictionaries (parent matching)
+  ([`ac157f2`](https://github.com/Oncoshot/llm-validation-framework/commit/ac157f265010e5ceebc300bf9995564f4364033b))
+
+
 ## v0.6.0 (2026-07-13)
 
 ### Documentation
