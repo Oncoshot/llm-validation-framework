@@ -18,8 +18,8 @@ The methodology behind this framework is described in a medRxiv preprint:
 - **Multi-field validation** - Binary (True/False), scalar (single values), and list (multiple values) data types
 - **Coded field support** - Score a value together with its code (ICD-10 / ICD-O-3, RxNorm) as two independent facets
 - **Partial labeling support** - Handle datasets where different cases have labels for different subsets of fields
-- **Parent matching** - Hierarchical dictionaries: a prediction that is the parent of the labeled value scores a partial match (0.5) instead of incorrect. 
-E.g. for ICD-10: `C00` "Malignant neoplasm of lip" is partially correct for label `C00.1` "Malignant neoplasm, external lower lip".
+- **Parent matching** - Hierarchical dictionaries: a prediction that is the parent of the labeled value scores a partial match (0.5) instead of incorrect.
+  E.g. for ICD-10: `C00` "Malignant neoplasm of lip" is partially correct for label `C00.1` "Malignant neoplasm, external lower lip".
 - **Dual usage modes** - Validate pre-computed results OR run live LLM inference with validation  
 - **Comprehensive metrics** - Precision, recall, F1/F2, accuracy, specificity, with micro and macro aggregation where applicable
 - **Confidence analysis** - Automatic performance breakdown by confidence levels
