@@ -44,14 +44,24 @@ pythonpath = [
   "src",
 ]
 
+# Keys below must use python-semantic-release v8+ spellings — the release workflow pins
+# v10. PSR ignores unrecognized keys silently (pydantic `extra="ignore"`, no warning even
+# at -vv), so a v7 spelling looks configured but does nothing. That is how `version_toml`
+# kept stamping pyproject.toml while `version_variable` (v7 name for `version_variables`)
+# quietly left __version__ at 0.0.0 in every published release. See ONC-12379.
 [tool.semantic_release]
-version_variable = ["src/llmvalidate/__init__.py:__version__"]
+version_variables = ["src/llmvalidate/__init__.py:__version__"]
 version_toml = ["pyproject.toml:project.version"]
-branch = "master"
 allow_zero_version = true
 build_command = "pip install build && python -m build"
-upload_to_pypi = true
-upload_to_release = true
-commit_version_number = true
+
+# Releases fire from master only. Declared explicitly rather than leaning on PSR's default
+# group, whose match pattern is "(main|master)".
+[tool.semantic_release.branches.master]
+match = "master"
+
+# Publishing is done by the workflow's own pypa/gh-action-pypi-publish and
+# upload-to-gh-release steps, so the v7 upload_to_pypi / upload_to_release keys are gone
+# rather than translated. commit_version_number is likewise dropped: v8+ always commits.
 
 
