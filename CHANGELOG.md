@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.1 (2026-07-29)
+
+### Bug Fixes
+
+- ONC-12379 restore semantic-release version stamping of __version__
+  ([`b22c998`](https://github.com/Oncoshot/llm-validation-framework/commit/b22c998edd1c242af2761c7b5e75c7442d8d50cb))
+
+
 ## v0.7.0 (2026-07-20)
 
 ### Bug Fixes
