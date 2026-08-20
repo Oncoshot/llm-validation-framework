@@ -157,3 +157,39 @@ def test_explicit_hour_cues(raw, expected):
 @pytest.mark.parametrize("raw", [5, 20210405, float("nan"), None, [], {}, object()])
 def test_non_string_input_returns_none(raw):
     assert to_sortable_date(raw) is None
+
+
+# Copilot review of PR #18, findings 2/3/5/6 — all pre-existing. An impossible clock value
+# drops the *time* and keeps the date, the same way a bare hour does; it does not fail the
+# whole parse (only an invalid explicit *date* does, per rule 7).
+@pytest.mark.parametrize("raw,expected", [
+    # Time components are range-checked.
+    ("2021-01-01 29:75:90", "2021-01-01"),      # was '2021-01-01 29:75:90'
+    ("2021-01-01 23:30 PM", "2021-01-01"),      # was '2021-01-01 35:30'
+    ("2021-01-01 25:00", "2021-01-01"),
+    ("2021-01-01 12:60", "2021-01-01"),
+    ("2021-01-01 12:30:61", "2021-01-01"),
+    ("2021-01-01 11:30 PM", "2021-01-01 23:30"),    # valid 12-hour input unaffected
+
+    # Only *actual* midnight is dropped; whole-hour stamps keep their time.
+    ("2021-01-01 13:00", "2021-01-01 13:00"),   # was '2021-01-01'
+    ("2021-01-01 09:00", "2021-01-01 09:00"),
+    ("2021-01-01 00:00", "2021-01-01"),
+    ("September 1, 2020 12:00 AM", "2020-09-01 00:00"),
+
+    # Prose punctuation after a date must not cost the day.
+    ("Date: 2021-07-04.", "2021-07-04"),        # was '2021-07'
+    ("Seen on 2021-07-04, discharged", "2021-07-04"),
+    ("(2021-07-04)", "2021-07-04"),
+    ("2021-02-29,", None),                      # invalid: fails, was '2021-02'
+    ("2019-07-04T21:05:07+08:00", "2019-07-04 21:05:07"),   # T form still works
+
+    # AM/PM is A-or-P followed by M, not any two of A/P/M.
+    ("2021-01-01 7 PP", "2021-01-01"),          # was '2021-01-01 07'
+    ("2021-01-01 7 AA", "2021-01-01"),
+    ("2021-01-01 7 MP", "2021-01-01"),
+    ("2021-01-01 7 AM", "2021-01-01 07"),
+    ("2021-01-01 7 pm", "2021-01-01 19"),
+])
+def test_clock_validation_and_date_boundaries(raw, expected):
+    assert to_sortable_date(raw) == expected

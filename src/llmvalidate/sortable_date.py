@@ -159,7 +159,7 @@ _TIME_RE = re.compile(r"""
         )?
     )?
     \s*
-    (?P<ampm>[APMapm]{2})?  # AM/PM
+    (?P<ampm>[AaPp][Mm])?   # AM/PM (not any two of A/P/M — 'PP' is not a time)
     (?:\s*(?P<unit>h|hrs?|hours?)\b)?       # explicit hour cue: 23 h / 07 hours
     (?:\s*(?:Z|UTC|\(UTC\)|[+-]\d{2}:?\d{2}))?  # trailing tz we ignore
 """, re.VERBOSE)
@@ -200,6 +200,14 @@ def _extract_time(substring):
     if not ampm and not unit and mnt is None:
         return None
 
+    # Impossible clock values are not a time: emitting them would break the one guarantee
+    # this function makes, that the result is a valid lexically-sortable stamp. Before the
+    # check, "29:75:90" came back verbatim and "23:30 PM" became "35:30".
+    if (mnt is not None and int(mnt) > 59) or (sec is not None and int(sec) > 59):
+        return None
+    if ampm and not 1 <= h <= 12:
+        return None
+
     # 12‑hour conversion
     if ampm:
         if ampm.lower() == 'pm' and h != 12:
@@ -207,8 +215,12 @@ def _extract_time(substring):
         if ampm.lower() == 'am' and h == 12:
             h = 0
 
-    # Midnight '00:00' with no AM/PM => ignore
-    if not ampm and not unit and mnt == '00' and sec is None:
+    if not 0 <= h <= 23:
+        return None
+
+    # Midnight '00:00' with no AM/PM => ignore. The hour test matters: without it *every*
+    # whole-hour stamp was dropped, so "13:00" lost its time.
+    if not ampm and not unit and h == 0 and mnt == '00' and sec is None:
         return None
 
     if mnt is None:
@@ -261,7 +273,10 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
 
     # --- 3. Full Y‑M‑D in various flavours --------------------------------
     # Numeric YYYY‑MM‑DD / YYYY/MM/DD / YYYY.MM.DD
-    for pat in (r'\b(\d{4})-(\d{1,2})-(\d{1,2})(?:T|\s|$)',
+    # The boundary is a lookahead, not a consumed character: a date ending in prose
+    # punctuation ("…on 2021-07-04.") must still match at day precision, and an invalid
+    # one ("2021-02-29,") must fail the parse rather than silently degrade to 2021-02.
+    for pat in (r'\b(\d{4})-(\d{1,2})-(\d{1,2})(?=T|\s|[.,;:)\]}]|$)',
                 r'\b(\d{4})/(\d{1,2})/(\d{1,2})\b',
                 r'\b(\d{4})\.(\d{1,2})\.(\d{1,2})\b'):
         for m in re.finditer(pat, s_clean):
