@@ -8,12 +8,17 @@ __version__ = "0.7.1"
 # pulling in the pandas/numpy scoring stack.
 from .structured import StructuredResult, StructuredGroup, StructuredField
 
+# `sortable_date` is std-lib only (`re`, `datetime`), so it is likewise eager: normalising a
+# date string must not cost the caller a pandas import. Keep it dependency-free.
+from .sortable_date import to_sortable_date
+
 __all__ = [
     "validate",
     "bootstrap_CI",
     "StructuredResult",
     "StructuredGroup",
     "StructuredField",
+    "to_sortable_date",
 ]
 
 

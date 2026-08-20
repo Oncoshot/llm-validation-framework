@@ -34,6 +34,20 @@ def test_importing_structured_types_does_not_load_pandas():
     assert out == "False", f"pandas was imported eagerly by the lightweight path: {out}"
 
 
+def test_importing_sortable_date_does_not_load_pandas():
+    # `to_sortable_date` is std-lib only; reaching it from either the package namespace or
+    # the submodule must stay on the lightweight path.
+    out = _run(
+        "import sys\n"
+        "from llmvalidate import to_sortable_date\n"
+        "from llmvalidate.sortable_date import to_sortable_date as _t\n"
+        "assert to_sortable_date is _t\n"
+        "assert to_sortable_date('5 Jan 2020') == '2020-01-05'\n"
+        f"print({_pandas_loaded_expr()})\n"
+    )
+    assert out == "False", f"pandas was imported by the sortable_date path: {out}"
+
+
 def test_scorer_is_accessible_and_loads_lazily():
     # Accessing validate/bootstrap_CI works and is what pulls pandas in (lazily).
     out = _run(
