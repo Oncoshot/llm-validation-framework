@@ -112,30 +112,48 @@ def test_date_only_parse(raw, expected, dayFirst):
     assert to_sortable_date(raw, dayFirst=dayFirst) == expected
 
 
-# Characterisation tests: these pin *current* behaviour, which for the first two groups is
-# known-wrong (ONC-12551). They exist so a fix cannot land silently — correcting the parser
-# must update these expectations deliberately.
+# ONC-12551: an hour must not be read as a 2-digit year, and an unknown-year date may carry
+# a time. Before the fix these returned a confidently wrong calendar year.
 @pytest.mark.parametrize("raw,expected", [
-    # An hour read as a 2-digit year. Should be '????-02-20 13:45' etc.
-    ("Feb 20 13:45", "2013-02-20"),
-    ("Feb 20 11 PM", "2011-02-20"),
-    ("20 Feb 14:30", "2014-02-20"),
+    ("Feb 20 13:45", "????-02-20 13:45"),      # was '2013-02-20'
+    ("Feb 20 11 PM", "????-02-20 23"),         # was '2011-02-20'
+    ("20 Feb 14:30", "????-02-20 14:30"),      # was '2014-02-20'
+    ("Apr 5 13:45", "????-04-05 13:45"),
+    ("Apr 5 13:45:09", "????-04-05 13:45:09"),
 
-    # `h` / `hrs` / `hours` cues are not recognised, so the time is dropped.
-    ("Oct-31-2021 23 h", "2021-10-31"),
-    ("Oct-31-2021 23 hrs", "2021-10-31"),
-    ("Oct-31-2021 around 07 hours", "2021-10-31"),
+    # A genuine 2-digit year is still a year — nothing time-like follows it.
+    ("Feb 20, 12", "2012-02-20"),
+    ("Apr 5, '21", "2021-04-05"),
+    ("5 Jan 20", "2020-01-05"),
 
-    # AM/PM does qualify a lone hour — this one is intended behaviour, not a defect.
-    ("Oct-31-2021 11 PM", "2021-10-31 23"),
+    # Unknown-year forms with no time keep their previous shape.
+    ("April 5", "????-04-05"),
+    ("Feb 29", "????-02-29"),
 ])
-def test_documented_gaps_current_behaviour(raw, expected):
+def test_hour_is_not_mistaken_for_a_two_digit_year(raw, expected):
     assert to_sortable_date(raw) == expected
 
 
-@pytest.mark.parametrize("raw", [5, 20210405, float("nan")])
-def test_non_string_input_raises(raw):
-    # `raw` is typed Any but only strings are handled; float('nan') is truthy so it reaches
-    # .strip() too. Pinned until ONC-12551 decides between coercing and rejecting.
-    with pytest.raises(AttributeError):
-        to_sortable_date(raw)
+# ONC-12551: `h` / `hr` / `hrs` / `hour(s)` cues mark a lone hour as intentional, as the
+# module docstring has always claimed. A bare number still does not.
+@pytest.mark.parametrize("raw,expected", [
+    ("Oct-31-2021 23 h", "2021-10-31 23"),
+    ("Oct-31-2021 23 hr", "2021-10-31 23"),
+    ("Oct-31-2021 23 hrs", "2021-10-31 23"),
+    ("Oct-31-2021 07 hour", "2021-10-31 07"),
+    ("Oct-31-2021 around 07 hours", "2021-10-31 07"),
+    ("31 Oct 2021 07 hours", "2021-10-31 07"),
+
+    ("Oct-31-2021 23", "2021-10-31"),          # bare hour: still dropped
+    ("Oct-31-2021 11 PM", "2021-10-31 23"),    # AM/PM: unchanged
+    ("Oct-31-2021 hospital visit", "2021-10-31"),   # 'h' word is not an hour cue
+])
+def test_explicit_hour_cues(raw, expected):
+    assert to_sortable_date(raw) == expected
+
+
+# ONC-12551: non-text input yields None rather than AttributeError. float('nan') is truthy,
+# so a NaN straight out of a DataFrame column used to reach .strip() and raise.
+@pytest.mark.parametrize("raw", [5, 20210405, float("nan"), None, [], {}, object()])
+def test_non_string_input_returns_none(raw):
+    assert to_sortable_date(raw) is None

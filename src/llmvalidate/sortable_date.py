@@ -26,15 +26,16 @@ The function returns the *left-most* valid date it can find in one of the follow
     YYYY-MM-DD HH:MM:SS
     ????-MM
     ????-MM-DD
+    ????-MM-DD HH…            (unknown year but explicit day/time)
 
 Key rules
 ---------
 1. **No gaps** – we never output seconds without minutes, or minutes without hours, etc.
 2. **Unknown year** – if the text clearly has *month + day* but no usable year, we insert `"????"`.
 3. **Time is optional** – we only add it when a full calendar date (day present) was captured.
-4. **Bare hour is ignored** – if the text just says “23” (with no `:` and no AM/PM) we assume it
-   is not an intentional time and we drop it.  
-   Only AM/PM makes a lone hour explicit: “11 PM” **is** kept.
+4. **Bare hour is ignored** – if the text just says “23” (with no `:`, no AM/PM and no `hours`
+   cue) we assume it is not an intentional time and we drop it.  
+   *Explicit* hours like “11 PM”, “23 h”, or “around 07 hours” **are** kept.
 5. **Timezone is ignored** – we strip `Z`, `UTC`, `+0800`, etc. but *never* shift the clock.
 6. **Earliest wins** – if the string contains several dates, the first valid one (left-most) is returned.
 7. **Invalid explicit dates** (e.g. `2021-02-29`) make the whole parse fail and return `None`.
@@ -58,6 +59,7 @@ Once the earliest *calendar* date is chosen, the same slice of text is examined 
 * `HH:MM:SS(.fff)? (AM|PM)?`
 * `HH:MM (AM|PM)?`
 * `HH (AM|PM)`
+* `HH (h|hr|hrs|hour|hours)` or “around HH hours”
 
 Seconds and sub-seconds are trimmed to `SS`; subseconds are discarded.  
 AM/PM is converted to 24-hour clock.  
@@ -67,18 +69,15 @@ Dependencies
 ------------
 Only the Python std-lib (`re`, `datetime`) – no `dateutil` needed.
 
-Known limitations
------------------
-Measured, not theoretical; tracked as ONC-12551 and pinned by tests so a fix has to update them:
+Non-text input
+--------------
+`raw` is typed `Any` because callers pass values straight from documents and dataframes.
+Anything that is not a `str` returns `None` – including `float("nan")`, which is *truthy* and
+would otherwise reach `.strip()` and raise.
 
-*  A month + day followed by a time and no year misreads the hour as a 2-digit year:
-   `"Feb 20 13:45"` → `2013-02-20`, not `????-02-20 13:45`. Silently wrong, not `None`.
-*  `h` / `hr` / `hrs` / `hour(s)` cues are not recognised, so `"23 h"` drops the time; only
-   an AM/PM qualifier keeps a lone hour.
-*  No input yields an unknown-year date *with* a time – the unknown-year branch never
-   attaches one.
-*  `raw` is typed `Any` but a non-string raises `AttributeError`; note `float("nan")` is
-   truthy, so a NaN straight out of a DataFrame column crashes rather than returning `None`.
+A two-digit number is only read as a year when nothing time-like follows it: `“Feb 20, 12”` is
+February 2012, while `“Feb 20 13:45”` is `????-02-20 13:45` – the 13 is the hour, and the year
+stays unknown rather than being invented (ONC-12551).
 """
 
 import re
@@ -150,7 +149,7 @@ def _earliest(matches):
 # ---------------------------------------------------------------------
 _TIME_RE = re.compile(r"""
     ^[\sT\-,.(]*            # leading junk, spaces, 'T', punctuation
-    (?:at\s+)?              # optional 'at'
+    (?:(?:at|around)\s+)?   # optional 'at' / 'around'
     (?P<h>\d{1,2})          # hour
     (?:
         :(?P<m>\d{1,2})     # minutes
@@ -161,8 +160,24 @@ _TIME_RE = re.compile(r"""
     )?
     \s*
     (?P<ampm>[APMapm]{2})?  # AM/PM
+    (?:\s*(?P<unit>h|hrs?|hours?)\b)?       # explicit hour cue: 23 h / 07 hours
     (?:\s*(?:Z|UTC|\(UTC\)|[+-]\d{2}:?\d{2}))?  # trailing tz we ignore
 """, re.VERBOSE)
+
+# What makes a bare two-digit number a *time* rather than a year: an immediately following
+# `:MM`, an AM/PM qualifier, or an hour unit. The year patterns consult this so that
+# "Feb 20 13:45" is not read as February 2013.
+_TIME_CONTEXT_RE = re.compile(r"""
+    ^(?: :\d{1,2}                  # 13:45
+       | \s*[APap][Mm]\b           # 11 PM
+       | \s*(?:h|hrs?|hours?)\b    # 23 h / 07 hours
+    )
+""", re.VERBOSE)
+
+
+def _year_is_actually_time(ystr, text, end):
+    """True when a *two-digit* year candidate is really the hour of a following time."""
+    return len(ystr) == 2 and _TIME_CONTEXT_RE.match(text[end:]) is not None
 
 
 def _extract_time(substring):
@@ -178,9 +193,11 @@ def _extract_time(substring):
     mnt = m.group('m')
     sec = m.group('s')
     ampm = m.group('ampm')
+    unit = m.group('unit')
 
-    # Bare hour w/out AM/PM is ignored
-    if not ampm and mnt is None:
+    # Bare hour is ignored: only AM/PM or an explicit unit ("23 h", "around 07 hours")
+    # marks a lone number as an intentional time.
+    if not ampm and not unit and mnt is None:
         return None
 
     # 12‑hour conversion
@@ -191,7 +208,7 @@ def _extract_time(substring):
             h = 0
 
     # Midnight '00:00' with no AM/PM => ignore
-    if not ampm and mnt == '00' and sec is None:
+    if not ampm and not unit and mnt == '00' and sec is None:
         return None
 
     if mnt is None:
@@ -209,7 +226,10 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     Convert *raw* to a sortable date (optionally with time) as described
     in the doc‑string of the original implementation.
     """
-    if not raw or not raw.strip():
+    # `raw` is Any because callers pass straight from documents/dataframes. Anything that is
+    # not text has no date in it — and note float("nan") is *truthy*, so a NaN cell would
+    # otherwise reach .strip() and raise.
+    if not isinstance(raw, str) or not raw.strip():
         return None
 
     s = re.sub(r'\s+', ' ', raw.strip())
@@ -253,6 +273,9 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
 
     # Ambiguous slash dates (D/M/Y or M/D/Y)
     for m in re.finditer(r'\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b', s_clean):
+        # A 2-digit "year" that is really an hour belongs to the time, not the date.
+        if _year_is_actually_time(m[3], s_clean, m.end()):
+            continue
         p1, p2, py = int(m[1]), int(m[2]), m[3]
         y = _normalize_two_digit_year(py.replace("'", ""))
         d, mm = (p1, p2) if dayFirst else (p2, p1)
@@ -265,6 +288,9 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     for m in re.finditer(r"\b([A-Za-z]{3,9}\.?)[ ]+(\d{1,2})(?:,)?[ ]+(?:'\s*)?(\d{2,4})\b", s_clean):
         mon = _month_from_name(m[1])
         if mon:
+            # A 2-digit "year" that is really an hour belongs to the time, not the date.
+            if _year_is_actually_time(m[3], s_clean, m.end()):
+                continue
             d   = int(m[2])
             y   = _normalize_two_digit_year(m[3].replace("'", ""))
             if _valid_ymd(y, mon, d):
@@ -276,6 +302,9 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     for m in re.finditer(r"\b(\d{1,2})\s+(?:of\s+)?([A-Za-z]{3,9}\.?),?\s+(?:'\s*)?(\d{2,4})\b", s_clean, re.IGNORECASE):
         mon = _month_from_name(m[2])
         if mon:
+            # A 2-digit "year" that is really an hour belongs to the time, not the date.
+            if _year_is_actually_time(m[3], s_clean, m.end()):
+                continue
             d = int(m[1])
             y = _normalize_two_digit_year(m[3].replace("'", ""))
             if _valid_ymd(y, mon, d):
@@ -287,6 +316,9 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     for m in re.finditer(r'\b([A-Za-z]{3,9}\.?)[-/](\d{1,2})[-/](\d{2,4})\b', s_clean):
         mon = _month_from_name(m[1])
         if mon:
+            # A 2-digit "year" that is really an hour belongs to the time, not the date.
+            if _year_is_actually_time(m[3], s_clean, m.end()):
+                continue
             d = int(m[2])
             y = _normalize_two_digit_year(m[3].replace("'", ""))
             if _valid_ymd(y, mon, d):
@@ -298,6 +330,9 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     for m in re.finditer(r'\b(\d{1,2})[-/]([A-Za-z]{3,9}\.?)[-/](\d{2,4})\b', s_clean):
         mon = _month_from_name(m[2])
         if mon:
+            # A 2-digit "year" that is really an hour belongs to the time, not the date.
+            if _year_is_actually_time(m[3], s_clean, m.end()):
+                continue
             d = int(m[1])
             y = _normalize_two_digit_year(m[3].replace("'", ""))
             if _valid_ymd(y, mon, d):
@@ -310,7 +345,7 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     if ymd:
         start, date_str, end_idx = _earliest(ymd)
         time = _extract_time(s_clean[end_idx:])
-        return f"{date_str} {time}" if time and date_str[0] != '?' else date_str
+        return f"{date_str} {time}" if time else date_str
 
     # --- 4. Year‑Month ----------------------------------------------------
     # Numeric YYYY‑MM / YYYY.MM / YYYY/MM
@@ -392,7 +427,9 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
                 uymd.append((m.start(), f"????-{mon:02d}-{d:02d}", m.end()))
 
     if uymd:
-        return _earliest(uymd)[1]
+        start, date_str, end_idx = _earliest(uymd)
+        time = _extract_time(s_clean[end_idx:])
+        return f"{date_str} {time}" if time else date_str
 
     # --- 6. Unknown‑year Month‑only --------------------------------------
     um = [(m.start(), f"????-{_month_from_name(m[1]):02d}", m.end())
