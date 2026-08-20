@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v0.8.0 (2026-08-20)
+
+### Bug Fixes
+
+- Correct to_sortable_date return type and docstring claims
+  ([`6f22573`](https://github.com/Oncoshot/llm-validation-framework/commit/6f2257321204d0146be42cebb8ae9c161cae54c7))
+
+- Range-check the clock and stop punctuation costing the day
+  ([`2cac096`](https://github.com/Oncoshot/llm-validation-framework/commit/2cac096668494e2d71bf097b49c5dcf7b6facd58))
+
+- Stop reading an hour as a 2-digit year, and honour hour cues
+  ([`e62939d`](https://github.com/Oncoshot/llm-validation-framework/commit/e62939df6e2e2f2800a7b03a2918c2963f2a487e))
+
+### Features
+
+- Add to_sortable_date for normalising messy date strings
+  ([`7e4031c`](https://github.com/Oncoshot/llm-validation-framework/commit/7e4031c91e61dfff61dd37b1e4af319927614b1e))
+
+
 ## v0.7.1 (2026-07-29)
 
 ### Bug Fixes
