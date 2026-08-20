@@ -26,16 +26,15 @@ The function returns the *left-most* valid date it can find in one of the follow
     YYYY-MM-DD HH:MM:SS
     ????-MM
     ????-MM-DD
-    ????-MM-DD HH…            (unknown year but explicit day/time)
 
 Key rules
 ---------
 1. **No gaps** – we never output seconds without minutes, or minutes without hours, etc.
 2. **Unknown year** – if the text clearly has *month + day* but no usable year, we insert `"????"`.
 3. **Time is optional** – we only add it when a full calendar date (day present) was captured.
-4. **Bare hour is ignored** – if the text just says “23” (with no `:` and no AM/PM/`hours` cue)
-   we assume it is not an intentional time and we drop it.  
-   *Explicit* hours like “11 PM”, “23 h”, or “around 07 hours” **are** kept.
+4. **Bare hour is ignored** – if the text just says “23” (with no `:` and no AM/PM) we assume it
+   is not an intentional time and we drop it.  
+   Only AM/PM makes a lone hour explicit: “11 PM” **is** kept.
 5. **Timezone is ignored** – we strip `Z`, `UTC`, `+0800`, etc. but *never* shift the clock.
 6. **Earliest wins** – if the string contains several dates, the first valid one (left-most) is returned.
 7. **Invalid explicit dates** (e.g. `2021-02-29`) make the whole parse fail and return `None`.
@@ -59,7 +58,6 @@ Once the earliest *calendar* date is chosen, the same slice of text is examined 
 * `HH:MM:SS(.fff)? (AM|PM)?`
 * `HH:MM (AM|PM)?`
 * `HH (AM|PM)`
-* `HH (h|hr|hrs|hour|hours)` or “around HH hours”
 
 Seconds and sub-seconds are trimmed to `SS`; subseconds are discarded.  
 AM/PM is converted to 24-hour clock.  
@@ -68,6 +66,19 @@ If only `HH` is present **and it isn’t explicit** (e.g. `23` alone) we drop th
 Dependencies
 ------------
 Only the Python std-lib (`re`, `datetime`) – no `dateutil` needed.
+
+Known limitations
+-----------------
+Measured, not theoretical; tracked as ONC-12551 and pinned by tests so a fix has to update them:
+
+*  A month + day followed by a time and no year misreads the hour as a 2-digit year:
+   `"Feb 20 13:45"` → `2013-02-20`, not `????-02-20 13:45`. Silently wrong, not `None`.
+*  `h` / `hr` / `hrs` / `hour(s)` cues are not recognised, so `"23 h"` drops the time; only
+   an AM/PM qualifier keeps a lone hour.
+*  No input yields an unknown-year date *with* a time – the unknown-year branch never
+   attaches one.
+*  `raw` is typed `Any` but a non-string raises `AttributeError`; note `float("nan")` is
+   truthy, so a NaN straight out of a DataFrame column crashes rather than returning `None`.
 """
 
 import re
@@ -193,7 +204,7 @@ def _extract_time(substring):
 # ---------------------------------------------------------------------
 # Main routine
 # ---------------------------------------------------------------------
-def to_sortable_date(raw: Any, dayFirst: bool = True) -> str:
+def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
     """
     Convert *raw* to a sortable date (optionally with time) as described
     in the doc‑string of the original implementation.

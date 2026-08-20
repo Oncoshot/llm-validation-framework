@@ -110,3 +110,32 @@ from llmvalidate.sortable_date import to_sortable_date
 ])
 def test_date_only_parse(raw, expected, dayFirst):
     assert to_sortable_date(raw, dayFirst=dayFirst) == expected
+
+
+# Characterisation tests: these pin *current* behaviour, which for the first two groups is
+# known-wrong (ONC-12551). They exist so a fix cannot land silently — correcting the parser
+# must update these expectations deliberately.
+@pytest.mark.parametrize("raw,expected", [
+    # An hour read as a 2-digit year. Should be '????-02-20 13:45' etc.
+    ("Feb 20 13:45", "2013-02-20"),
+    ("Feb 20 11 PM", "2011-02-20"),
+    ("20 Feb 14:30", "2014-02-20"),
+
+    # `h` / `hrs` / `hours` cues are not recognised, so the time is dropped.
+    ("Oct-31-2021 23 h", "2021-10-31"),
+    ("Oct-31-2021 23 hrs", "2021-10-31"),
+    ("Oct-31-2021 around 07 hours", "2021-10-31"),
+
+    # AM/PM does qualify a lone hour — this one is intended behaviour, not a defect.
+    ("Oct-31-2021 11 PM", "2021-10-31 23"),
+])
+def test_documented_gaps_current_behaviour(raw, expected):
+    assert to_sortable_date(raw) == expected
+
+
+@pytest.mark.parametrize("raw", [5, 20210405, float("nan")])
+def test_non_string_input_raises(raw):
+    # `raw` is typed Any but only strings are handled; float('nan') is truthy so it reaches
+    # .strip() too. Pinned until ONC-12551 decides between coercing and rejecting.
+    with pytest.raises(AttributeError):
+        to_sortable_date(raw)
