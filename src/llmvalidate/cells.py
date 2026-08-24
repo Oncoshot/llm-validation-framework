@@ -221,13 +221,20 @@ def canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = Tr
     * an **unlabelled** cell (empty, NaN, `pd.NA`) is returned unchanged — it says nothing
       about the field, and turning that into an answer would put an out-of-scope row into a
       scorer's denominator;
-    * a **no-finding** cell (`"-"`) stays `NO_FINDING`;
-    * text that holds **no readable date** becomes `NO_FINDING` — the honest reading of "we
-      looked and there is nothing here";
-    * anything else is rendered at the mask (see `to_canonical_date` for the rules: the mask
-      truncates but never pads, a time is dropped, a year-less date is not a date).
+    * the **no-finding** cell `"-"` stays `NO_FINDING`;
+    * other text is rendered at the mask (see `to_canonical_date` for the rules: the mask
+      truncates but never pads, a time is dropped, a year-less date is not a date), and text
+      holding **no readable date** becomes `NO_FINDING` — the honest reading of "we looked
+      and there is nothing here";
+    * anything that is **neither text nor a missing marker** — a list, a number, a `date`
+      object — is returned **unchanged**. It is not a date cell at all, so manufacturing a
+      sentinel for it would hide a wrong-column-type bug behind a plausible-looking answer.
+      `is_canonical_date_cell` rejects it, which is where such a cell should surface. Note
+      `[]` lands here: the empty list is the no-finding sentinel of a **list** column, not of
+      a date one.
 
-    Whatever this returns satisfies `is_canonical_date_cell` for the same `(mask, dayFirst)`,
+    For text and for missing markers — everything a cell in such a column should ever hold —
+    whatever this returns satisfies `is_canonical_date_cell` for the same `(mask, dayFirst)`,
     so a producer can put dirty text straight through it.
 
     One caution for **label** builders: text holding no readable date is indistinguishable
@@ -237,6 +244,8 @@ def canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = Tr
     """
     if is_unlabelled(cell):
         return cell
+    if not isinstance(cell, str):
+        return cell   # not text, not missing: not a date cell — leave it visible
     if is_no_finding(cell):
         return NO_FINDING
     rendered = to_canonical_date(cell, mask, dayFirst=dayFirst)
@@ -246,11 +255,18 @@ def canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = Tr
 def is_canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> bool:
     """True when a column defined to hold a `mask` date may hold `cell` as it stands.
 
-    That is: a sentinel — unlabelled or no-finding — or a canonical date at the mask's
+    That is: an unlabelled cell, the `"-"` sentinel, or a canonical date at the mask's
     precision **or coarser** (`is_canonical_date`). A test of *cleanliness*, not of
     correctness: a coarser value is clean and will simply score wrong against a finer label.
     Finer than the mask is not clean, and neither is anything `dayFirst` cannot read.
+
+    A cell that is not text is not a date cell — a list, a number, a `date` object all fail
+    here, so a column carrying the wrong sort of cell shows up in validation instead of
+    passing as something else. `[]` in particular: it is the no-finding sentinel of a
+    **list** column, and this is not one.
     """
-    if is_unlabelled(cell) or is_no_finding(cell):
+    if is_unlabelled(cell):
         return True
-    return is_canonical_date(cell, mask, dayFirst=dayFirst)
+    if not isinstance(cell, str):
+        return False
+    return is_no_finding(cell) or is_canonical_date(cell, mask, dayFirst=dayFirst)

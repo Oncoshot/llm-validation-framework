@@ -5,6 +5,7 @@ public helpers against that behaviour, so a caller writing or reading a cell agr
 scorer rather than re-deriving the rules from prose.
 """
 
+import datetime
 from decimal import Decimal
 
 import numpy as np
@@ -297,3 +298,21 @@ def test_the_reading_is_declared_by_the_caller_not_guessed():
     assert canonical_date_cell("05/01/2023", DAY, dayFirst=False) == "2023-05-01"
     assert canonical_date_cell("11/26/2024", DAY, dayFirst=False) == "2024-11-26"
     assert canonical_date_cell("11/26/2024", DAY, dayFirst=True) == NO_FINDING
+
+
+@pytest.mark.parametrize("cell", [
+    pytest.param([], id="empty-list"),                 # the *list* column's no-finding
+    pytest.param(["2024-11-26"], id="list-of-dates"),
+    pytest.param(42, id="int"),
+    pytest.param(20241126, id="int-that-looks-like-a-date"),
+    pytest.param({"when": "2024-11-26"}, id="dict"),
+    pytest.param(datetime.date(2024, 11, 26), id="date-object"),
+])
+def test_a_cell_that_is_not_text_is_not_a_date_cell(cell):
+    # A date column holds text (or a missing marker), so anything else is a wrong-column-type
+    # bug. `[]` is the trap worth naming: it is the no-finding sentinel of a *list* column,
+    # and accepting it here would let a list-typed cell pass validation as an answer.
+    assert is_canonical_date_cell(cell, DAY) is False
+    # ...and canonicalising leaves it alone rather than manufacturing a sentinel, so the
+    # problem surfaces in validation instead of hiding behind a plausible-looking "-".
+    assert canonical_date_cell(cell, DAY) is cell
