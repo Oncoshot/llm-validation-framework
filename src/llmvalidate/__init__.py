@@ -1,7 +1,7 @@
 # Managed by python-semantic-release — do not edit by hand; the release workflow rewrites
 # this line. Set to 0.7.0 once by hand to clear the drift from ONC-12379, during which the
 # release never reached this file and it stayed at 0.0.0 across every published version.
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # `structured` is pydantic-only and cheap, so it is imported eagerly: consumers that
 # only need the extraction contract (StructuredResult / StructuredField) get it without

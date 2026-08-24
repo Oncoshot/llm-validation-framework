@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-08-24)
+
+### Bug Fixes
+
+- A cell that is not text is not a date cell (ONC-12571)
+  ([`0959cd6`](https://github.com/Oncoshot/llm-validation-framework/commit/0959cd6dca8056707a45e33b82b540a1ee1e70d5))
+
+- Check the date mask before the cell, not after (ONC-12571)
+  ([`680fd07`](https://github.com/Oncoshot/llm-validation-framework/commit/680fd0789ffd5b5fe4e1b106219bd80d2d485bd5))
+
+### Features
+
+- Own the date-cell helpers so consumers stop mirroring them (ONC-12571)
+  ([`798c778`](https://github.com/Oncoshot/llm-validation-framework/commit/798c778419e130375f0ff82937d477c3cf62c2c0))
+
+
 ## v1.1.0 (2026-08-24)
 
 
