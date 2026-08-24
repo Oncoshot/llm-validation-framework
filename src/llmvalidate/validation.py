@@ -8,6 +8,7 @@ import time
 import os
 import concurrent.futures as cf
 from tqdm import tqdm
+from .cells import FACET_SUFFIXES, NO_FINDING, is_no_finding, is_unlabelled
 from .utils import convert_lists, infer_fields
 
 def compare_results_binary(expected, actual):
@@ -277,7 +278,7 @@ def _confidence_column(field, columns):
     direct = f'Res: {field} confidence'
     if direct in columns:
         return direct
-    for suffix in ("-value", "-code"):
+    for suffix in FACET_SUFFIXES:
         if field.endswith(suffix):
             parent = f'Res: {field[:-len(suffix)]} confidence'
             if parent in columns:
@@ -341,7 +342,7 @@ def get_metrics(res_df, fields):
                 continue  # Skip empty confidence groups
 
             labeled_cases = field_df[field].count()
-            field_present_cases = field_df[field].apply(lambda x: not (is_scalar_empty(x) or x == [])).sum()
+            field_present_cases = field_df[field].apply(lambda x: not (is_scalar_empty(x) or is_no_finding(x))).sum()
 
             TP = TN = FP = FN = \
             cor = inc = mis = spu = par = \
@@ -562,18 +563,21 @@ def normalize_list(values):
     return result
 
 def is_scalar_empty(value):
-    if value in [None, "", "-"]:
-        return True
-    if isinstance(value, float):
-        return math.isnan(value)
-    return False
+    """True when a scalar cell holds no value to compare — not labelled, or no finding.
+
+    Deliberately covers both: several call sites below only care that there is nothing to
+    match. Where the distinction matters (a cell that says nothing vs. one that asserts
+    nothing was found), use `llmvalidate.cells.is_unlabelled` / `is_no_finding` instead.
+    """
+    return is_unlabelled(value) or value == NO_FINDING
 
 def is_expected_undefined(value):
-    if value in [None, ""]:
-        return True
-    if isinstance(value, float):
-        return math.isnan(value)
-    return False
+    """True when a label cell says nothing about its field (`None` / `""` / NaN).
+
+    Such a row is out of scope for that field — neither numerator nor denominator — which
+    is what makes partial labelling work. `"-"` is *not* undefined: it is a real label.
+    """
+    return is_unlabelled(value)
 
 def _single_row_worker(row_tuple):
     """Runs in a separate process / thread.

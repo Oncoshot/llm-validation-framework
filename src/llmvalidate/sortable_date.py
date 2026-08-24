@@ -78,6 +78,14 @@ would otherwise reach `.strip()` and raise.
 A two-digit number is only read as a year when nothing time-like follows it: `“Feb 20, 12”` is
 February 2012, while `“Feb 20 13:45”` is `????-02-20 13:45` – the 13 is the hour, and the year
 stays unknown rather than being invented (ONC-12551).
+
+Canonical dates at a fixed precision
+------------------------------------
+`to_sortable_date` returns *whatever precision the source stated*, optionally with a time.
+A field that is defined to hold a date — a diagnosis date, a treatment start month — wants
+one fixed shape instead, so `to_canonical_date` layers a **mask** on top (`YYYY-MM-DD`,
+`YYYY-MM`, `YYYY`) and `is_canonical_date` tests whether a value already is one. See those
+functions for the rules; both are std-lib only, like everything else here.
 """
 
 import re
@@ -466,3 +474,73 @@ def to_sortable_date(raw: Any, dayFirst: bool = True) -> str | None:
         return f"{int(m[1]):04d}"
 
     return None
+
+
+# ---------------------------------------------------------------------
+# Canonical dates: one fixed precision, for a field defined to hold a date
+# ---------------------------------------------------------------------
+# A mask, mapped to how many components of `YYYY-MM-DD` it keeps.
+DATE_MASKS = {"YYYY-MM-DD": 3, "YYYY-MM": 2, "YYYY": 1}
+
+# The shapes a canonical date can take: a real year, optionally a month, optionally a day.
+# Zero-padded, `-`-separated, nothing else — no time, no unknown-year `????`.
+_CANONICAL_DATE_RE = re.compile(r"^\d{4}(-\d{2}){0,2}$")
+
+
+def to_canonical_date(raw: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> str | None:
+    """`raw`'s date at `mask`'s precision, or **None** when it holds no usable date.
+
+    Built on `to_sortable_date`, with three rules on top:
+
+    1. **A date, not a timestamp.** Any time component is dropped — a date field stores a
+       date.
+    2. **The mask truncates; it never pads.** `"26/11/2024"` under `YYYY-MM` is
+       `"2024-11"`. A source *coarser* than the mask stays coarse: `"Nov 2024"` under
+       `YYYY-MM-DD` is `"2024-11"`, never `"2024-11-01"` — this function does not invent a
+       component the source did not state, so a caller can tell "the source said November"
+       from "the source said 1 November".
+    3. **No year, no date.** `to_sortable_date` reports a year-less date as `"????-11-26"`;
+       here that is None, because an unknown-year value cannot be compared with, or read
+       back as, a real date.
+
+    None is also what an unparsable value, an impossible calendar date (`"2024-02-30"`) and
+    a non-string give back. It is deliberately **not** a sentinel: `"-"`, `""` and `None`
+    mean different things to different callers (no information vs. not labelled vs. absent),
+    so mapping None onto one of them is the caller's decision — see `llmvalidate.cells`.
+
+    `dayFirst` selects the reading of an ambiguous numeric date, exactly as in
+    `to_sortable_date`: `"05/01/2023"` is 5 January when True and 1 May when False. Raises
+    `ValueError` for a mask that isn't one of `DATE_MASKS`.
+    """
+    if mask not in DATE_MASKS:
+        raise ValueError(f"unknown date mask {mask!r}; expected one of {list(DATE_MASKS)}")
+    sortable = to_sortable_date(raw, dayFirst=dayFirst)
+    if not sortable:
+        return None
+    day_part = sortable.split(" ", 1)[0]          # rule 1: drop any time
+    if not day_part[:4].isdigit():                # rule 3: `????-...` has no year
+        return None
+    return "-".join(day_part.split("-")[:DATE_MASKS[mask]])   # rule 2: truncate only
+
+
+def is_canonical_date(value: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> bool:
+    """True when `value` already *is* a canonical date for `mask` — at that precision or coarser.
+
+    A test of shape, not of correctness: `"2024-11"` passes for a `YYYY-MM-DD` mask (the
+    source stated only a month), while `"2024-11-26"` fails for a `YYYY-MM` mask (finer
+    than the field holds). Anything `to_canonical_date` would have rewritten fails —
+    `"26/11/2024"`, `"2024-11-26 09:30"`, `"2024-1-5"`, `"2024-02-30"`, `"????-11-26"` —
+    which makes `to_canonical_date` idempotent on everything this accepts.
+
+    Sentinels are the caller's business: `""` and `"-"` are not canonical dates and return
+    False here. Pair this with `llmvalidate.cells.is_no_finding` / `is_unlabelled` to decide
+    what a whole cell may hold.
+    """
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if not _CANONICAL_DATE_RE.match(stripped):
+        return False
+    # Round-trip: only a value this module would itself have produced is canonical. This is
+    # what rejects impossible calendar dates, which the shape check alone lets through.
+    return to_canonical_date(stripped, mask, dayFirst) == stripped

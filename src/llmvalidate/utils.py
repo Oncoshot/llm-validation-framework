@@ -1,5 +1,6 @@
 from typing import Any, List, Dict, Optional, Union
 from ast import literal_eval
+from .cells import facet_columns
 from .structured import StructuredResult
 import pandas as pd
 import re
@@ -74,8 +75,9 @@ def flatten_structured_result(structured_result: StructuredResult, remove_quotes
 
             if field.code is not None:
                 # Coded concept -> two scored facets; label columns are named the same.
-                flat[f"{base_name}-value"] = value
-                flat[f"{base_name}-code"] = _dequote(field.code)
+                value_column, code_column = facet_columns(base_name)
+                flat[value_column] = value
+                flat[code_column] = _dequote(field.code)
             else:
                 flat[base_name] = value
 
