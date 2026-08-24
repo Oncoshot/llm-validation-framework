@@ -12,13 +12,17 @@ def convert_lists(data):
         Brackets therefore mean "this cell is a list": `"[see note]"` becomes the
         one-element list `["see note"]`. Write a scalar without them. A cell that opens a
         bracket without closing one (`"['a', "`) is left as text rather than guessed at.
+
+        Surrounding whitespace is ignored — `" [A, B]"` is the same cell as `"[A, B]"`. It
+        did not used to be: the bracket test ran on the raw string, so a padded list cell
+        was left as text however it was written.
     """
     def convert_element(x):
         if isinstance(x, list):
             return x
         if pd.isna(x):
             return x
-        if pd.notnull(x) and isinstance(x, str) and x.startswith('['):
+        if pd.notnull(x) and isinstance(x, str) and x.strip().startswith('['):
             try:
                 return literal_eval(x)
             except (ValueError, SyntaxError):
@@ -30,7 +34,7 @@ def convert_lists(data):
                 # comma is the only separator left in that form, so an element containing one
                 # cannot be recovered — which is why nothing writes this form any more.
                 text = x.strip()
-                if text.endswith(']'):
+                if text.endswith(']'):  # `text`, so padding does not hide the closing bracket
                     inner = text[1:-1].strip()
                     return [part.strip() for part in inner.split(',') if part.strip()] if inner else []
                 return x

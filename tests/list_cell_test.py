@@ -146,3 +146,24 @@ def test_an_unterminated_cell_is_left_as_text():
     # Only a *bracketed and closed* cell is recovered; a truncated one stays a string rather
     # than being silently reinterpreted.
     assert convert_lists("['Drug A', ") == "['Drug A', "
+
+
+@pytest.mark.parametrize("cell,expected", [
+    ("[Drug A, Drug B]", ["Drug A", "Drug B"]),
+    (" [Drug A, Drug B]", ["Drug A", "Drug B"]),      # the old _dequote could emit this
+    ("\t[Drug A, Drug B] ", ["Drug A", "Drug B"]),
+    (" ['Drug A', 'Drug B']", ["Drug A", "Drug B"]),   # quoted, and padded: also missed before
+    ("  [Drug A]  ", ["Drug A"]),
+    (" [] ", []),
+    (" not a list ", " not a list "),                 # unchanged: no brackets, no parse
+])
+def test_padding_does_not_hide_a_list_cell(cell, expected):
+    # The bracket test used to run on the raw string, so any leading whitespace left a list
+    # cell as one long string — for the quote-stripped form *and* for a perfectly good repr.
+    assert convert_lists(cell) == expected
+
+
+def test_a_padded_cell_is_scored_setwise():
+    micro, macro = _score(" [Drug A, Drug B] ", " ['Drug A'] ")
+    assert micro == pytest.approx(2 / 3)      # half right, not a whole-string mismatch
+    assert _macro_reported(macro)
