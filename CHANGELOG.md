@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.1 (2026-08-24)
+
+### Bug Fixes
+
+- Stop leading whitespace hiding a list cell (ONC-12563)
+  ([`edd31ad`](https://github.com/Oncoshot/llm-validation-framework/commit/edd31adc9d64ed63c39734f61e63f29aa33f596e))
+
+
 ## v1.0.0 (2026-08-24)
 
 ### Bug Fixes
