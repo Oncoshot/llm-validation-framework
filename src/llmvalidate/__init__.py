@@ -10,7 +10,13 @@ from .structured import StructuredResult, StructuredGroup, StructuredField
 
 # `sortable_date` is std-lib only (`re`, `datetime`), so it is likewise eager: normalising a
 # date string must not cost the caller a pandas import. Keep it dependency-free.
-from .sortable_date import DATE_MASKS, is_canonical_date, to_canonical_date, to_sortable_date
+from .sortable_date import (
+    DATE_MASKS,
+    is_canonical_date,
+    is_date_mask,
+    to_canonical_date,
+    to_sortable_date,
+)
 
 # `cells` states the value-level conventions of a scored table — the no-finding sentinel,
 # list cells, and the `-value`/`-code` facet columns. Std-lib only for the same reason:
@@ -20,8 +26,10 @@ from .cells import (
     FACET_SUFFIXES,
     NO_FINDING,
     VALUE_SUFFIX,
+    canonical_date_cell,
     facet_columns,
     format_list_cell,
+    is_canonical_date_cell,
     is_no_finding,
     is_unlabelled,
     parse_list_cell,
@@ -38,7 +46,10 @@ __all__ = [
     "to_sortable_date",
     "to_canonical_date",
     "is_canonical_date",
+    "is_date_mask",
     "DATE_MASKS",
+    "canonical_date_cell",
+    "is_canonical_date_cell",
     # cell conventions
     "NO_FINDING",
     "is_no_finding",
