@@ -1,5 +1,6 @@
 from typing import Any, List, Dict, Optional, Union
 from ast import literal_eval
+from .cells import facet_columns, parse_list_cell
 from .structured import StructuredResult
 import pandas as pd
 import json
@@ -33,10 +34,9 @@ def convert_lists(data):
                 # Recover the elements so it is scored set-wise like any other list. The
                 # comma is the only separator left in that form, so an element containing one
                 # cannot be recovered — which is why nothing writes this form any more.
-                text = x.strip()
-                if text.endswith(']'):  # `text`, so padding does not hide the closing bracket
-                    inner = text[1:-1].strip()
-                    return [part.strip() for part in inner.split(',') if part.strip()] if inner else []
+                # `strip()` first, so padding cannot hide the closing bracket.
+                if x.strip().endswith(']'):
+                    return parse_list_cell(x)
                 return x
         return x
 
@@ -94,8 +94,9 @@ def flatten_structured_result(structured_result: StructuredResult) -> Dict[str, 
 
             if field.code is not None:
                 # Coded concept -> two scored facets; label columns are named the same.
-                flat[f"{base_name}-value"] = value
-                flat[f"{base_name}-code"] = field.code
+                value_column, code_column = facet_columns(base_name)
+                flat[value_column] = value
+                flat[code_column] = field.code
             else:
                 flat[base_name] = value
 

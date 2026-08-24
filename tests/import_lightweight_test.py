@@ -48,6 +48,23 @@ def test_importing_sortable_date_does_not_load_pandas():
     assert out == "False", f"pandas was imported by the sortable_date path: {out}"
 
 
+def test_importing_the_cell_conventions_does_not_load_pandas():
+    # `cells` and the date masks are std-lib only: reading or writing a cell, or
+    # canonicalising a date, must not drag the scoring stack in.
+    out = _run(
+        "import sys\n"
+        "from llmvalidate import NO_FINDING, is_no_finding, is_unlabelled\n"
+        "from llmvalidate import parse_list_cell, format_list_cell, facet_columns, split_facet\n"
+        "from llmvalidate import to_canonical_date, is_canonical_date, DATE_MASKS\n"
+        "assert parse_list_cell(format_list_cell(['EGFR'])) == ['EGFR']\n"
+        "assert facet_columns('X') == ('X-value', 'X-code')\n"
+        "assert to_canonical_date('26/11/2024', 'YYYY-MM') == '2024-11'\n"
+        "assert is_no_finding(NO_FINDING) and is_unlabelled('')\n"
+        f"print({_pandas_loaded_expr()})\n"
+    )
+    assert out == "False", f"pandas was imported by the cells/date path: {out}"
+
+
 def test_scorer_is_accessible_and_loads_lazily():
     # Accessing validate/bootstrap_CI works and is what pulls pandas in (lazily).
     out = _run(
