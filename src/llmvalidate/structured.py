@@ -2,7 +2,8 @@ from pydantic import BaseModel
 from typing import Any, List, Dict, Optional, Union
 
 # For all LLM Extracted Value
-# Multi Value: Lists -> Stringified lists'[A, B]' (no quotes if use remove_quotes = True)
+# Multi Value: Lists -> a list. A stringified list repr ('["A", "B"]') is parsed back into
+#              one by flatten_structured_result, so the field is scored set-wise.
 # Single Value String -> String 
 # None or No Date-> None (after applied to_sortable_date)
 
