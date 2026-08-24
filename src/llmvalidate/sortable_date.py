@@ -487,6 +487,15 @@ DATE_MASKS = {"YYYY-MM-DD": 3, "YYYY-MM": 2, "YYYY": 1}
 _CANONICAL_DATE_RE = re.compile(r"^\d{4}(-\d{2}){0,2}$")
 
 
+def is_date_mask(value: Any) -> bool:
+    """True when `value` names one of the masks in `DATE_MASKS`.
+
+    For a caller whose schema declares a column's type as a string: this is the test for
+    "does this column hold a date", without it having to hard-code the mask names.
+    """
+    return isinstance(value, str) and value in DATE_MASKS
+
+
 def _precision(mask: str) -> int:
     """How many components `mask` keeps. Raises `ValueError` for a mask that isn't one."""
     try:

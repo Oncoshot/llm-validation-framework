@@ -16,8 +16,10 @@ from llmvalidate import (
     FACET_SUFFIXES,
     NO_FINDING,
     VALUE_SUFFIX,
+    canonical_date_cell,
     facet_columns,
     format_list_cell,
+    is_canonical_date_cell,
     is_no_finding,
     is_unlabelled,
     parse_list_cell,
@@ -212,3 +214,86 @@ def test_flatten_uses_these_names():
     assert flat[value_column] == "Adenocarcinoma"
     assert flat[code_column] == "8140/3"
     assert flat["Primary Site"] == "Lung"          # free-form stays a single column
+
+
+# --- Date cells: the two conventions together --------------------------------
+# `to_canonical_date` returns None for "no usable date" so a caller can decide what that
+# means in a cell. These are that decision, and the reason a consumer no longer has to make
+# it for itself (the Optimization harness had this layer written twice, once per side).
+
+DAY, MONTH = "YYYY-MM-DD", "YYYY-MM"
+
+
+@pytest.mark.parametrize("cell,mask,dayFirst,expected", [
+    # a real value renders at the mask — the rules are `to_canonical_date`'s
+    ("26/11/2024", DAY, True, "2024-11-26"),
+    ("dx 26 Nov 2024", DAY, True, "2024-11-26"),
+    ("2024-11-26 09:30", DAY, True, "2024-11-26"),
+    ("reported 11/26/2024", MONTH, False, "2024-11"),
+    ("2024-11-26", MONTH, True, "2024-11"),          # the mask truncates
+    ("Nov 2024", DAY, True, "2024-11"),              # coarser stays coarse
+    # a no-finding cell is an answer, and stays one
+    (NO_FINDING, DAY, True, NO_FINDING),
+    # text that holds no readable date is "we looked, there is nothing"
+    ("not stated", DAY, True, NO_FINDING),
+    ("26 Nov", DAY, True, NO_FINDING),               # no year
+    ("26/11/2024", DAY, False, NO_FINDING),          # unreadable under this reading
+    ("2024-02-30", DAY, True, NO_FINDING),           # impossible date
+])
+def test_canonical_date_cell(cell, mask, dayFirst, expected):
+    assert canonical_date_cell(cell, mask, dayFirst=dayFirst) == expected
+
+
+@pytest.mark.parametrize("cell", MISSING)
+def test_an_unlabelled_cell_survives_canonicalising(cell):
+    # The distinction this module exists for: "says nothing" must not become "says nothing
+    # was found", or a scorer gains an out-of-scope row in its denominator.
+    out = canonical_date_cell(cell, DAY)
+    assert is_unlabelled(out), out
+    assert not is_no_finding(out)
+
+
+@pytest.mark.parametrize("cell,mask,dayFirst", [
+    ("26/11/2024", DAY, True), ("Nov 2024", DAY, True), ("reported 11/26/2024", MONTH, False),
+    ("not stated", DAY, True), (NO_FINDING, DAY, True), ("", DAY, True), (None, DAY, True),
+    (float("nan"), MONTH, True), ("2024-11-26", MONTH, True),
+])
+def test_canonicalising_yields_something_the_column_may_hold(cell, mask, dayFirst):
+    # The invariant a producer leans on: canonicalise anything, and the cell is acceptable.
+    assert is_canonical_date_cell(canonical_date_cell(cell, mask, dayFirst=dayFirst),
+                                  mask, dayFirst=dayFirst)
+
+
+@pytest.mark.parametrize("cell,mask,dayFirst", [
+    ("2024-11-26", DAY, True),
+    ("2024-11", MONTH, True),
+    ("2024-11", DAY, True),          # coarser than the mask is clean, and scores wrong
+    (NO_FINDING, DAY, True),
+    ("", DAY, True),
+    (None, DAY, True),
+    (float("nan"), DAY, True),
+])
+def test_cells_a_date_column_may_hold(cell, mask, dayFirst):
+    assert is_canonical_date_cell(cell, mask, dayFirst=dayFirst)
+
+
+@pytest.mark.parametrize("cell,mask,dayFirst", [
+    ("26/11/2024", DAY, True),       # readable, not canonical
+    ("2024-11-26 09:30", DAY, True), # carries a time
+    ("2024-11-26", MONTH, True),     # finer than the mask
+    ("2024-1-5", DAY, True),         # not zero-padded
+    ("????-11-26", DAY, True),       # unknown year
+    ("2024-02-30", DAY, True),       # impossible day
+    ("dx 2024-11-26", DAY, True),    # a date plus other text
+])
+def test_cells_a_date_column_may_not_hold(cell, mask, dayFirst):
+    assert not is_canonical_date_cell(cell, mask, dayFirst=dayFirst)
+
+
+def test_the_reading_is_declared_by_the_caller_not_guessed():
+    # Why `dayFirst` travels with the schema in a caller that has date columns: the same
+    # text is two different dates, and one reading may make it no date at all.
+    assert canonical_date_cell("05/01/2023", DAY, dayFirst=True) == "2023-01-05"
+    assert canonical_date_cell("05/01/2023", DAY, dayFirst=False) == "2023-05-01"
+    assert canonical_date_cell("11/26/2024", DAY, dayFirst=False) == "2024-11-26"
+    assert canonical_date_cell("11/26/2024", DAY, dayFirst=True) == NO_FINDING

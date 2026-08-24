@@ -8,7 +8,7 @@ module would itself produce counts as canonical.
 
 import pytest
 
-from llmvalidate import DATE_MASKS, is_canonical_date, to_canonical_date
+from llmvalidate import DATE_MASKS, is_canonical_date, is_date_mask, to_canonical_date
 
 DAY = "YYYY-MM-DD"
 MONTH = "YYYY-MM"
@@ -125,6 +125,17 @@ def test_output_is_canonical_and_stable(raw, mask):
     once = to_canonical_date(raw, mask)
     assert is_canonical_date(once, mask)
     assert to_canonical_date(once, mask) == once
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("YYYY-MM-DD", True), ("YYYY-MM", True), ("YYYY", True),
+    ("text", False), ("number", False), ("list", False), ("date", False),
+    ("yyyy-mm-dd", False), ("", False), (None, False), (3, False),
+])
+def test_is_date_mask(value, expected):
+    # For a caller whose schema names a column's type as a string: the test for "does this
+    # column hold a date", without hard-coding the mask names on its side.
+    assert is_date_mask(value) is expected
 
 
 @pytest.mark.parametrize("mask", list(DATE_MASKS))

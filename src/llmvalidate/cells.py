@@ -20,6 +20,10 @@ them once:
 * **Facet columns.** A field carrying a `code` flattens to two scored columns, `<field>-value`
   and `<field>-code` (see `utils.flatten_structured_result`). `facet_columns` builds the pair
   and `split_facet` takes it apart.
+* **Date cells.** A column defined to hold a date holds one canonical rendering of one — and
+  the sentinels. `canonical_date_cell` / `is_canonical_date_cell` are the two conventions
+  together: `sortable_date`'s mask rules for a real value, and the rules above for a cell
+  that says nothing or says "nothing to find".
 
 Std-lib only, and eagerly importable: reading or writing a cell must not cost the caller a
 pandas import.
@@ -39,6 +43,8 @@ is more forgiving at compare time (it strips through `normalize` before matching
 import math
 from ast import literal_eval
 from typing import Any
+
+from .sortable_date import is_canonical_date, to_canonical_date
 
 # The "no information" sentinel: the source was read and stated nothing to find. A real,
 # graded answer — not the absence of one.
@@ -202,3 +208,49 @@ def split_facet(column: str) -> tuple[str, str | None]:
         if column.endswith(suffix) and len(column) > len(suffix):
             return column[: -len(suffix)], suffix.lstrip("-")
     return column, None
+
+
+# --- Date cells ---------------------------------------------------------------
+
+def canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> Any:
+    """`cell`'s canonical date at `mask`, with the sentinels preserved.
+
+    The cell-level counterpart to `sortable_date.to_canonical_date`, which returns None for
+    "no usable date" precisely so a caller can decide what that means in a *cell*. Here:
+
+    * an **unlabelled** cell (empty, NaN, `pd.NA`) is returned unchanged — it says nothing
+      about the field, and turning that into an answer would put an out-of-scope row into a
+      scorer's denominator;
+    * a **no-finding** cell (`"-"`) stays `NO_FINDING`;
+    * text that holds **no readable date** becomes `NO_FINDING` — the honest reading of "we
+      looked and there is nothing here";
+    * anything else is rendered at the mask (see `to_canonical_date` for the rules: the mask
+      truncates but never pads, a time is dropped, a year-less date is not a date).
+
+    Whatever this returns satisfies `is_canonical_date_cell` for the same `(mask, dayFirst)`,
+    so a producer can put dirty text straight through it.
+
+    One caution for **label** builders: text holding no readable date is indistinguishable
+    here from a cell that recorded nothing, since both come back as `NO_FINDING`. Compare the
+    result against what the source was meant to say and fail the build when they disagree —
+    silently mislabelling a row is worse than not building.
+    """
+    if is_unlabelled(cell):
+        return cell
+    if is_no_finding(cell):
+        return NO_FINDING
+    rendered = to_canonical_date(cell, mask, dayFirst=dayFirst)
+    return rendered if rendered is not None else NO_FINDING
+
+
+def is_canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> bool:
+    """True when a column defined to hold a `mask` date may hold `cell` as it stands.
+
+    That is: a sentinel — unlabelled or no-finding — or a canonical date at the mask's
+    precision **or coarser** (`is_canonical_date`). A test of *cleanliness*, not of
+    correctness: a coarser value is clean and will simply score wrong against a finer label.
+    Finer than the mask is not clean, and neither is anything `dayFirst` cannot read.
+    """
+    if is_unlabelled(cell) or is_no_finding(cell):
+        return True
+    return is_canonical_date(cell, mask, dayFirst=dayFirst)
