@@ -2,13 +2,16 @@ from typing import Any, List, Dict, Optional, Union
 from ast import literal_eval
 from .structured import StructuredResult
 import pandas as pd
-import re
 import json
 
 def convert_lists(data):
     """ If an element of the DataFrame in any row and any column
         or a value in a dictionary is a string and starts with '[', 
         it will convert it into a list, unless it's already a list.
+
+        Brackets therefore mean "this cell is a list": `"[see note]"` becomes the
+        one-element list `["see note"]`. Write a scalar without them. A cell that opens a
+        bracket without closing one (`"['a', "`) is left as text rather than guessed at.
     """
     def convert_element(x):
         if isinstance(x, list):
@@ -19,6 +22,17 @@ def convert_lists(data):
             try:
                 return literal_eval(x)
             except (ValueError, SyntaxError):
+                # Legacy cells: `flatten_structured_result` used to strip the quotes out of
+                # a stringified list ("[A, B]"), which `literal_eval` cannot read back — so
+                # such a cell was compared as one long string, scoring 0 for a half-right or
+                # reordered list and 0 even for a correct one when the label kept its quotes.
+                # Recover the elements so it is scored set-wise like any other list. The
+                # comma is the only separator left in that form, so an element containing one
+                # cannot be recovered — which is why nothing writes this form any more.
+                text = x.strip()
+                if text.endswith(']'):
+                    inner = text[1:-1].strip()
+                    return [part.strip() for part in inner.split(',') if part.strip()] if inner else []
                 return x
         return x
 
@@ -30,7 +44,7 @@ def convert_lists(data):
         # For other types, apply the conversion directly
         return convert_element(data)
 
-def flatten_structured_result(structured_result: StructuredResult, remove_quotes: bool = True) -> Dict[str, Any]:
+def flatten_structured_result(structured_result: StructuredResult) -> Dict[str, Any]:
     """
     Flatten a StructuredResult into a flat dictionary ignoring groups.
 
@@ -45,17 +59,19 @@ def flatten_structured_result(structured_result: StructuredResult, remove_quotes
     the same name. `confidence` / `justification` remain keyed by the logical field N (a
     single column), and `get_metrics` bins both facets by that one confidence column.
 
+    A **multi-value field comes out as a real list**, whether the caller built one or handed
+    over a stringified list repr (`'["A", "B"]'`, which is what `convert_value_to_string`
+    produces) — `convert_lists` parses the repr on the way out, so the field is scored
+    set-wise.
+
+    There is no `remove_quotes` flag any more. It stripped the quotes out of a stringified
+    list (`'["A", "B"]'` -> `'[A, B]'`) *before* that parse, leaving a form `literal_eval`
+    cannot read, so the cell reached the scorer as one long string: a half-right or reordered
+    list scored 0, and even a fully correct list scored 0 when the label kept its quotes.
+    Cells already written that way are recovered on the way in — see `convert_lists`.
+
     Later duplicates overwrite earlier ones (last one wins).
-
-    Args:
-    remove_quotes (bool): If True, remove double quotes inside stringified lists
-                            (e.g., '["A", "B"]' -> '[A, B]').
     """
-    def _dequote(v):
-        if remove_quotes and isinstance(v, str) and re.match(r'^\[.*\]$', v.strip()):
-            return re.sub(r'"\s*([^"]*?)\s*"', r'\1', v)
-        return v
-
     flat: Dict[str, Any] = {}
     if not structured_result or not structured_result.groups:
         return flat
@@ -70,12 +86,12 @@ def flatten_structured_result(structured_result: StructuredResult, remove_quotes
             if not base_name:
                 continue
 
-            value = _dequote(field.value)
+            value = field.value
 
             if field.code is not None:
                 # Coded concept -> two scored facets; label columns are named the same.
                 flat[f"{base_name}-value"] = value
-                flat[f"{base_name}-code"] = _dequote(field.code)
+                flat[f"{base_name}-code"] = field.code
             else:
                 flat[base_name] = value
 
