@@ -22,7 +22,12 @@ them once:
 Std-lib only, and eagerly importable: reading or writing a cell must not cost the caller a
 pandas import.
 
-The predicates here read a cell **exactly as written**: `" - "` is not the sentinel. That is
+Missing values are accepted in every shape they arrive in — `None`, NaN (of any float
+type), `pd.NA`, `pd.NaT` — because a cell that came out of a frame or a parser is under no
+obligation to be a built-in, and `pd.NA` cannot even be compared without raising.
+
+Beyond that, the predicates here read a cell **exactly as written**: `" - "` is not the
+sentinel. That is
 on purpose — a caller is usually checking what a file or a submission *contains*, and a cell
 padded with spaces is a formatting problem worth seeing rather than papering over. `validate`
 is more forgiving at compare time (it strips through `normalize` before matching), as is
@@ -37,6 +42,12 @@ from typing import Any
 # graded answer — not the absence of one.
 NO_FINDING = "-"
 
+# pandas' own missing-value singletons, recognised by type name so this module stays
+# std-lib only. `pd.NA` earns the special case twice over: it is not a float, so no NaN
+# test finds it, and it cannot be compared either — `pd.NA == ""` is `pd.NA`, whose truth
+# value raises.
+_MISSING_TYPE_NAMES = frozenset({"NAType", "NaTType"})
+
 # The two scored columns a coded field flattens into, in the order `facet_columns` returns
 # them (value first, matching `flatten_structured_result`'s output order).
 VALUE_SUFFIX = "-value"
@@ -46,16 +57,45 @@ FACET_SUFFIXES = (VALUE_SUFFIX, CODE_SUFFIX)
 
 # --- Sentinels ---------------------------------------------------------------
 
+def _is_missing_scalar(value: Any) -> bool:
+    """True for every shape "no value at all" arrives in.
+
+    `None`, any NaN, and pandas' `pd.NA` / `pd.NaT`. NaN is tested by conversion rather
+    than by `isinstance(value, float)`: `numpy.float64` happens to subclass `float`, but
+    `numpy.float32` and `Decimal("nan")` do not, and a cell that came out of a frame or a
+    parser is under no obligation to be a built-in.
+    """
+    if value is None:
+        return True
+    if type(value).__name__ in _MISSING_TYPE_NAMES:
+        return True
+    try:
+        return bool(math.isnan(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _equals(value: Any, other: str) -> bool:
+    """`value == other` as a real `bool`, False when the two cannot be compared.
+
+    Guards two things a raw `==` would do to a caller: returning a `numpy.bool_` from a
+    function annotated `-> bool`, and raising on a value whose comparison is not a boolean
+    at all (an array, or `pd.NA`).
+    """
+    try:
+        return bool(value == other)
+    except (TypeError, ValueError):
+        return False
+
+
 def is_unlabelled(value: Any) -> bool:
-    """True when a cell says nothing about its field — `None`, `""`, or NaN.
+    """True when a cell says nothing about its field — `None`, `""`, NaN, `pd.NA`, `pd.NaT`.
 
     Such a cell is **not** a prediction of "nothing to find": scoring treats it as out of
     scope for that row (partial labelling), so it lands in neither the numerator nor the
     denominator. Contrast `is_no_finding`.
     """
-    if value is None or value == "":
-        return True
-    return isinstance(value, float) and math.isnan(value)
+    return _is_missing_scalar(value) or _equals(value, "")
 
 
 def is_no_finding(value: Any) -> bool:
@@ -64,10 +104,13 @@ def is_no_finding(value: Any) -> bool:
     A graded answer: predicting it against a real label costs recall, and predicting a value
     against it costs precision. `["-"]` is **not** this — it is a list holding one phantom
     element, which scores as a spurious hit; the empty list is how a list field says nothing.
+    A missing value is not this either: nothing was asserted at all (see `is_unlabelled`).
     """
     if isinstance(value, list):
         return not value
-    return value == NO_FINDING
+    if _is_missing_scalar(value):
+        return False
+    return _equals(value, NO_FINDING)
 
 
 # --- List cells --------------------------------------------------------------
@@ -92,8 +135,8 @@ def parse_list_cell(cell: Any) -> list:
     """
     if isinstance(cell, list):
         return list(cell)
-    if cell is None or (isinstance(cell, float) and math.isnan(cell)):
-        return []
+    if _is_missing_scalar(cell):
+        return []   # not "one element that stringifies to 'nan'"
     text = str(cell).strip()
     if text in ("", NO_FINDING):
         return []

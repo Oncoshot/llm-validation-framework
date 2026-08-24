@@ -5,6 +5,10 @@ public helpers against that behaviour, so a caller writing or reading a cell agr
 scorer rather than re-deriving the rules from prose.
 """
 
+from decimal import Decimal
+
+import numpy as np
+import pandas as pd
 import pytest
 
 from llmvalidate import (
@@ -34,6 +38,50 @@ def test_unlabelled_values(value):
 def test_no_finding_values(value):
     assert is_no_finding(value)
     assert not is_unlabelled(value)
+
+
+# Every shape "no value at all" arrives in. A cell out of a frame or a parser is under no
+# obligation to be a built-in: `numpy.float64` happens to subclass `float` but
+# `numpy.float32` and `Decimal("nan")` do not, and `pd.NA` cannot even be compared — it used
+# to raise `TypeError` here, and stringified to a phantom `['<NA>']` element in a list cell.
+MISSING = [
+    pytest.param(None, id="None"),
+    pytest.param("", id="empty"),
+    pytest.param(float("nan"), id="float-nan"),
+    pytest.param(np.float64("nan"), id="np.float64-nan"),
+    pytest.param(np.float32("nan"), id="np.float32-nan"),
+    pytest.param(np.nan, id="np.nan"),
+    pytest.param(Decimal("nan"), id="Decimal-nan"),
+    pytest.param(pd.NA, id="pd.NA"),
+    pytest.param(pd.NaT, id="pd.NaT"),
+]
+
+
+@pytest.mark.parametrize("value", MISSING)
+def test_every_missing_shape_is_unlabelled(value):
+    assert is_unlabelled(value) is True
+    # Missing is not an assertion that nothing was found — nothing was asserted at all.
+    assert is_no_finding(value) is False
+    # ...and in a list cell it is no elements, not one element spelling "nan".
+    assert parse_list_cell(value) == []
+
+
+@pytest.mark.parametrize("value", MISSING + [
+    pytest.param("Lung", id="text"), pytest.param(NO_FINDING, id="sentinel"),
+    pytest.param(np.float64(1.5), id="np.float64"), pytest.param([], id="empty-list"),
+])
+def test_the_predicates_return_real_bools(value):
+    # A numpy comparison yields `numpy.bool_`, and `pd.NA == x` yields `pd.NA` — neither is
+    # usable by a caller that writes `if is_no_finding(cell):`.
+    assert type(is_unlabelled(value)) is bool
+    assert type(is_no_finding(value)) is bool
+
+
+def test_values_that_cannot_be_compared_are_not_missing():
+    # An array is not a scalar cell; the guard exists so a caller gets False instead of
+    # "truth value of an array is ambiguous".
+    assert is_unlabelled(np.array([1.0, 2.0])) is False
+    assert is_no_finding(np.array([1.0, 2.0])) is False
 
 
 @pytest.mark.parametrize("value", ["Lung", "0", 0, 0.0, False, ["EGFR"], [NO_FINDING], " - ", "--"])
