@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v1.0.1 (2026-08-24)
+
+### Bug Fixes
+
+- Stop leading whitespace hiding a list cell (ONC-12563)
+  ([`edd31ad`](https://github.com/Oncoshot/llm-validation-framework/commit/edd31adc9d64ed63c39734f61e63f29aa33f596e))
+
+
+## v1.0.0 (2026-08-24)
+
+### Bug Fixes
+
+- Score quote-stripped list cells set-wise instead of as one string (ONC-12563)
+  ([`af4a411`](https://github.com/Oncoshot/llm-validation-framework/commit/af4a4119129d963f2174029d50dfdc1bc107e4fa))
+
+### Testing
+
+- Assert a macro F1 was actually reported, not merely present (ONC-12563)
+  ([`c61c8d9`](https://github.com/Oncoshot/llm-validation-framework/commit/c61c8d9cf7d0381654faca746e232bcb163d1acd))
+
+### Breaking Changes
+
+- `flatten_structured_result` no longer accepts `remove_quotes`; a caller still passing it gets a
+  TypeError rather than silently different scoring. Reported metrics move for anyone whose list
+  cells were written in the stripped form — upward, and correct, but they move.
+
+
 ## v0.8.0 (2026-08-20)
 
 ### Bug Fixes
