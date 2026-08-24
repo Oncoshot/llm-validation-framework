@@ -487,6 +487,16 @@ DATE_MASKS = {"YYYY-MM-DD": 3, "YYYY-MM": 2, "YYYY": 1}
 _CANONICAL_DATE_RE = re.compile(r"^\d{4}(-\d{2}){0,2}$")
 
 
+def _precision(mask: str) -> int:
+    """How many components `mask` keeps. Raises `ValueError` for a mask that isn't one."""
+    try:
+        return DATE_MASKS[mask]
+    except KeyError:
+        raise ValueError(
+            f"unknown date mask {mask!r}; expected one of {list(DATE_MASKS)}"
+        ) from None
+
+
 def to_canonical_date(raw: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> str | None:
     """`raw`'s date at `mask`'s precision, or **None** when it holds no usable date.
 
@@ -512,15 +522,14 @@ def to_canonical_date(raw: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True)
     `to_sortable_date`: `"05/01/2023"` is 5 January when True and 1 May when False. Raises
     `ValueError` for a mask that isn't one of `DATE_MASKS`.
     """
-    if mask not in DATE_MASKS:
-        raise ValueError(f"unknown date mask {mask!r}; expected one of {list(DATE_MASKS)}")
+    components = _precision(mask)
     sortable = to_sortable_date(raw, dayFirst=dayFirst)
     if not sortable:
         return None
     day_part = sortable.split(" ", 1)[0]          # rule 1: drop any time
     if not day_part[:4].isdigit():                # rule 3: `????-...` has no year
         return None
-    return "-".join(day_part.split("-")[:DATE_MASKS[mask]])   # rule 2: truncate only
+    return "-".join(day_part.split("-")[:components])         # rule 2: truncate only
 
 
 def is_canonical_date(value: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = True) -> bool:
@@ -534,8 +543,11 @@ def is_canonical_date(value: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = Tru
 
     Sentinels are the caller's business: `""` and `"-"` are not canonical dates and return
     False here. Pair this with `llmvalidate.cells.is_no_finding` / `is_unlabelled` to decide
-    what a whole cell may hold.
+    what a whole cell may hold. An unknown `mask` raises `ValueError` as it does in
+    `to_canonical_date`, and is checked before anything else — so a bad argument is reported
+    whatever value it was handed, not only for the values that reach the round-trip.
     """
+    _precision(mask)
     if not isinstance(value, str):
         return False
     stripped = value.strip()

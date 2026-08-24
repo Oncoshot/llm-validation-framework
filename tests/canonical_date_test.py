@@ -71,9 +71,13 @@ def test_the_default_mask_is_day_precision():
     assert is_canonical_date("2024-11-26")
 
 
-def test_unknown_mask_fails_loudly():
+@pytest.mark.parametrize("fn", [to_canonical_date, is_canonical_date])
+@pytest.mark.parametrize("value", ["2024-11-26", "not a date", "", None, 42])
+def test_unknown_mask_fails_loudly_whatever_the_value(fn, value):
+    # The mask is checked before the value, so a bad argument is reported the same way
+    # however it was called — not only for the values that get far enough to need it.
     with pytest.raises(ValueError) as excinfo:
-        to_canonical_date("2024-11-26", "DD/MM/YYYY")
+        fn(value, "DD/MM/YYYY")
     assert "DD/MM/YYYY" in str(excinfo.value)
     assert all(mask in str(excinfo.value) for mask in DATE_MASKS)
 

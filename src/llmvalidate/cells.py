@@ -13,8 +13,10 @@ them once:
   most common mistake against this contract, hence `is_unlabelled` and `is_no_finding` rather
   than one "is it empty" helper.
 * **List cells.** A `list` field's cell is a `literal_eval`-able list repr (`"['EGFR',
-  'KRAS']"`), with `"-"` for no finding. `parse_list_cell` / `format_list_cell` are that
-  round-trip.
+  'KRAS']"`), with `"-"` for no finding and an empty cell for not labelled.
+  `parse_list_cell` / `format_list_cell` are that round-trip, and they carry the sentinel
+  distinction through it rather than flattening it: an unlabelled cell parses to `None`,
+  a no-finding one to `[]`.
 * **Facet columns.** A field carrying a `code` flattens to two scored columns, `<field>-value`
   and `<field>-code` (see `utils.flatten_structured_result`). `facet_columns` builds the pair
   and `split_facet` takes it apart.
@@ -115,14 +117,20 @@ def is_no_finding(value: Any) -> bool:
 
 # --- List cells --------------------------------------------------------------
 
-def parse_list_cell(cell: Any) -> list:
-    """The elements of a `list` field's cell, in order.
+def parse_list_cell(cell: Any) -> list | None:
+    """The elements of a `list` field's cell, in order — or **None** when it is unlabelled.
 
-    A list repr parses to its elements; `"-"` and an empty cell are no finding, so `[]`. A
-    string that is not a list repr is treated as a single element — a one-element cell
-    written without brackets is far more likely than a caller wanting a crash. A malformed
-    repr (`"['a', "`) likewise degrades to one element rather than raising, matching how
-    `validate` leaves an unparsable cell alone instead of failing the run.
+    The sentinel distinction survives the parse, because collapsing it here would quietly
+    undo the point of this module: `"-"` and `[]` are the graded no-finding answer and come
+    back as `[]`, while a cell that says nothing at all (empty, NaN, `pd.NA`) comes back as
+    None. Hand `[]` to the scorer for an unlabelled row and you add an out-of-scope row to
+    the denominator.
+
+    A list repr parses to its elements. A string that is not a list repr is treated as a
+    single element — a one-element cell written without brackets is far more likely than a
+    caller wanting a crash. A malformed repr (`"['a', "`) likewise degrades to one element
+    rather than raising, matching how `validate` leaves an unparsable cell alone instead of
+    failing the run.
 
     Bracketed-but-unquoted cells (`"[EGFR, KRAS]"`) are split on commas. That form is not a
     Python repr and `literal_eval` rejects it, but it is what this package itself writes:
@@ -136,9 +144,11 @@ def parse_list_cell(cell: Any) -> list:
     if isinstance(cell, list):
         return list(cell)
     if _is_missing_scalar(cell):
-        return []   # not "one element that stringifies to 'nan'"
+        return None   # says nothing — neither elements nor a no-finding answer
     text = str(cell).strip()
-    if text in ("", NO_FINDING):
+    if text == "":
+        return None            # an all-whitespace cell says nothing either
+    if text == NO_FINDING:
         return []
     if text.startswith("["):
         try:
@@ -157,11 +167,12 @@ def parse_list_cell(cell: Any) -> list:
 def format_list_cell(items: Any) -> str:
     """A `list` field's cell for `items`: `"-"` when there are none, else a list repr.
 
-    The inverse of `parse_list_cell`, and the form a dataset or export should write so the
-    scorer reads back the elements it was given.
+    The exact inverse of `parse_list_cell`, distinction included: `[]` is the no-finding
+    answer `"-"`, and None — nothing to say about this field — is the empty cell. The form a
+    dataset or export should write so the scorer reads back what it was given.
     """
     if items is None:
-        return NO_FINDING
+        return ""
     if isinstance(items, str):
         return items.strip() or NO_FINDING
     elements = [str(x) for x in items]

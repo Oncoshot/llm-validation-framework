@@ -62,8 +62,9 @@ def test_every_missing_shape_is_unlabelled(value):
     assert is_unlabelled(value) is True
     # Missing is not an assertion that nothing was found — nothing was asserted at all.
     assert is_no_finding(value) is False
-    # ...and in a list cell it is no elements, not one element spelling "nan".
-    assert parse_list_cell(value) == []
+    # ...and in a list cell it is None: neither elements, nor the no-finding answer, nor
+    # one element spelling "nan".
+    assert parse_list_cell(value) is None
 
 
 @pytest.mark.parametrize("value", MISSING + [
@@ -111,9 +112,9 @@ def test_the_predicates_agree_with_the_scorers_own_view():
     ("['EGFR']", ["EGFR"]),
     ("[]", []),
     (NO_FINDING, []),                          # no finding, either spelling
-    ("", []),
-    ("   ", []),
-    (None, []),
+    ("", None),                                # not labelled: says nothing at all
+    ("   ", None),
+    (None, None),
     ("EGFR", ["EGFR"]),                        # a single element written without brackets
     ("  EGFR  ", ["EGFR"]),
     ("['EGFR', ", ["['EGFR',"]),               # malformed: degrades, never raises
@@ -127,8 +128,16 @@ def test_parse_list_cell(cell, expected):
     assert parse_list_cell(cell) == expected
 
 
-def test_parse_list_cell_handles_nan_like_the_scorer():
-    assert parse_list_cell(float("nan")) == []
+def test_parse_list_cell_keeps_the_sentinel_distinction():
+    # The module's central claim has to survive the parse. Handing `[]` back for an
+    # unlabelled cell would put an out-of-scope row into the scorer's denominator, and
+    # `is_no_finding([])` would then report an answer nobody gave.
+    assert parse_list_cell(float("nan")) is None
+    assert parse_list_cell("") is None
+    assert parse_list_cell(NO_FINDING) == []        # a real, graded "nothing to find"
+    assert parse_list_cell("[]") == []
+    assert is_no_finding(parse_list_cell(NO_FINDING)) is True
+    assert is_unlabelled(parse_list_cell(None)) is True
 
 
 def test_parse_list_cell_preserves_order_and_duplicates():
@@ -140,8 +149,8 @@ def test_parse_list_cell_preserves_order_and_duplicates():
 @pytest.mark.parametrize("items,expected", [
     (["EGFR", "KRAS"], "['EGFR', 'KRAS']"),
     (["EGFR"], "['EGFR']"),
-    ([], NO_FINDING),
-    (None, NO_FINDING),
+    ([], NO_FINDING),                          # no finding
+    (None, ""),                                # nothing to say -> the unlabelled cell
     ((), NO_FINDING),
     (("EGFR",), "['EGFR']"),
     ([14, 7], "['14', '7']"),                  # cells are text
@@ -152,8 +161,9 @@ def test_format_list_cell(items, expected):
     assert format_list_cell(items) == expected
 
 
-@pytest.mark.parametrize("items", [["EGFR", "KRAS"], ["EGFR"], [], ["a b", "c,d"]])
+@pytest.mark.parametrize("items", [["EGFR", "KRAS"], ["EGFR"], [], ["a b", "c,d"], None])
 def test_the_list_cell_round_trip(items):
+    # Exact inverses, distinction included: None -> "" -> None, [] -> "-" -> [].
     assert parse_list_cell(format_list_cell(items)) == items
 
 
