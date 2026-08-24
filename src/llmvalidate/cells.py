@@ -44,7 +44,7 @@ import math
 from ast import literal_eval
 from typing import Any
 
-from .sortable_date import is_canonical_date, to_canonical_date
+from .sortable_date import _precision, is_canonical_date, to_canonical_date
 
 # The "no information" sentinel: the source was read and stated nothing to find. A real,
 # graded answer — not the absence of one.
@@ -237,11 +237,16 @@ def canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool = Tr
     whatever this returns satisfies `is_canonical_date_cell` for the same `(mask, dayFirst)`,
     so a producer can put dirty text straight through it.
 
+    An unknown `mask` raises `ValueError`, checked **before** the cell — as in
+    `to_canonical_date`. A misspelled column type has to be reported by the first cell it is
+    used on, not only by the first cell that happens to carry a date.
+
     One caution for **label** builders: text holding no readable date is indistinguishable
     here from a cell that recorded nothing, since both come back as `NO_FINDING`. Compare the
     result against what the source was meant to say and fail the build when they disagree —
     silently mislabelling a row is worse than not building.
     """
+    _precision(mask)   # a bad mask is a bad mask, whatever this cell holds
     if is_unlabelled(cell):
         return cell
     if not isinstance(cell, str):
@@ -264,7 +269,12 @@ def is_canonical_date_cell(cell: Any, mask: str = "YYYY-MM-DD", dayFirst: bool =
     here, so a column carrying the wrong sort of cell shows up in validation instead of
     passing as something else. `[]` in particular: it is the no-finding sentinel of a
     **list** column, and this is not one.
+
+    An unknown `mask` raises `ValueError` rather than answering, checked **before** the cell:
+    a validator sweeping a column must not report a malformed schema as clean just because
+    the rows it reached were sentinels.
     """
+    _precision(mask)   # as in `is_canonical_date`: value-independent
     if is_unlabelled(cell):
         return True
     if not isinstance(cell, str):

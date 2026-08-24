@@ -316,3 +316,19 @@ def test_a_cell_that_is_not_text_is_not_a_date_cell(cell):
     # ...and canonicalising leaves it alone rather than manufacturing a sentinel, so the
     # problem surfaces in validation instead of hiding behind a plausible-looking "-".
     assert canonical_date_cell(cell, DAY) is cell
+
+
+@pytest.mark.parametrize("fn", [canonical_date_cell, is_canonical_date_cell])
+@pytest.mark.parametrize("cell", [
+    pytest.param("2024-11-26", id="a-date"), pytest.param("26/11/2024", id="dirty-text"),
+    pytest.param("", id="unlabelled"), pytest.param(NO_FINDING, id="no-finding"),
+    pytest.param(float("nan"), id="nan"), pytest.param(None, id="None"),
+    pytest.param([], id="empty-list"), pytest.param(42, id="int"),
+])
+def test_an_unknown_mask_raises_whatever_the_cell_holds(fn, cell):
+    # Value-independent, exactly as in `to_canonical_date` / `is_canonical_date`: a validator
+    # sweeping a column must not call a misspelled column type clean because the rows it
+    # happened to reach were empty or sentinels.
+    with pytest.raises(ValueError) as excinfo:
+        fn(cell, "DD/MM/YYYY")
+    assert "DD/MM/YYYY" in str(excinfo.value)
