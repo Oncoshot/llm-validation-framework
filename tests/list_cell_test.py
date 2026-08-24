@@ -34,11 +34,22 @@ def _flat(value, code=None) -> dict:
 
 
 def _score(label, prediction, field="Medications"):
-    """(micro F1, macro F1) for one case. Macro is empty unless the field scored set-wise."""
+    """(micro F1, macro F1) for one case. Macro is `pd.NA` when none was reported."""
     df = pd.DataFrame({field: [label], f"Res: {field}": [prediction]}, index=["c1"])
     _, metrics = v.validate(df, [field], structure_callback=None, output_folder=None)
     row = metrics[metrics["field"] == field].iloc[0]
-    return float(row["F1 score (micro)"]), row.get("F1 score (macro)", "")
+    return float(row["F1 score (micro)"]), row.get("F1 score (macro)", pd.NA)
+
+
+def _macro_reported(macro) -> bool:
+    """True when a real macro F1 came back — the tell that a field was scored set-wise.
+
+    Three ways it can be absent, and none of them is a number: the column is missing
+    entirely (nothing in the frame scored set-wise), it is NaN (a scalar field's row in a
+    frame that also holds a list field), or it is empty. `pd.notna` is checked first
+    because comparing `pd.NA` to a string yields `pd.NA`, which cannot be used as a bool.
+    """
+    return pd.notna(macro) and macro != ""
 
 
 # --- What flatten emits ------------------------------------------------------
@@ -116,7 +127,7 @@ def test_nothing_emits_the_unreadable_form_any_more():
 def test_list_cells_are_scored_setwise_however_they_were_written(label, prediction, expected_f1):
     micro, macro = _score(label, prediction)
     assert micro == expected_f1
-    assert macro != "", "a list field must report macro metrics (it was scored as a scalar)"
+    assert _macro_reported(macro), "a list field must report macro metrics (it was scored as a scalar)"
 
 
 def test_a_wrong_element_still_costs():
