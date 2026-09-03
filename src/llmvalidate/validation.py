@@ -844,7 +844,8 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
              comparison_callback = None,
              max_workers: int | None = 1,
              use_threads: bool = True,
-             hierarchy = {}):
+             hierarchy = {},
+             derived_fields = ()):
     """
     Performs validation by applying a structuring callback to an input dataset and evaluating performance.
 
@@ -863,6 +864,33 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
         List of column names representing the label fields to be evaluated.
         If None and structure_callback is also None, fields will be automatically inferred 
         from columns that have corresponding "Res: " columns.
+
+    - **derived_fields (collection of str, optional)**:
+        Names in ``fields`` that the ``comparison_callback`` **creates** during scoring, so
+        they are exempt from the "must already be a column in source_df" check. Default
+        ``()`` (no derived fields) keeps the current behavior: every scored field must be an
+        input column.
+
+        This splits a distinction ``fields`` otherwise conflates: a name in ``fields`` is
+        both *the column holding the labels* and *the name of the thing being scored*. Those
+        usually coincide, but need not — a ``comparison_callback`` can derive what it scores
+        from a different column (e.g. score a ``spans`` field computed from a ``labels``
+        column) and write the field plus its own ``TP:``/``FP:``/``FN:`` counts onto the row.
+        For such a field only the second meaning applies and there is no input column to
+        require, which is what ``derived_fields`` declares. The check is kept for every other
+        field because it is what catches a misspelled field name.
+
+        Rules, each failing fast with a clear message:
+        - a name in ``derived_fields`` that is not in ``fields`` is a ``ValueError`` — it
+          exempts nothing and is usually a typo;
+        - a non-empty ``derived_fields`` with ``comparison_callback=None`` is a
+          ``ValueError`` — nothing would create the column;
+        - a bare string (``derived_fields='spans'``) is a ``TypeError``, rather than a silent
+          iteration over its characters;
+        - a derived field that *is* present in ``source_df`` anyway is accepted with no error
+          and no warning, so datasets carrying placeholder columns keep working unchanged;
+        - a derived field still missing after scoring is a ``ValueError`` naming it, instead
+          of a bare ``KeyError`` raised later from inside ``get_metrics``.
 
     - **structure_callback (callable, optional)**: 
         A callback function that will be applied to each row to generate structured predictions.
@@ -904,6 +932,17 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
     if source_df.index.has_duplicates:
         raise ValueError("Please remove duplicate values in index column")
 
+    # derived_fields is a collection of field names, so a bare string is a caller mistake:
+    # it would iterate into single characters ('spans' -> 's', 'p', 'a', ...) and silently
+    # exempt names nobody declared. Fail fast with a clear message, the same way the
+    # hierarchy shape is checked in compare_results_all.
+    if isinstance(derived_fields, (str, bytes)):
+        raise TypeError(
+            "derived_fields must be a collection of field names, not a single string; "
+            f"pass ({derived_fields!r},) to declare one derived field"
+        )
+    derived_fields = tuple(derived_fields)
+
     # Infer fields from columns if both structure_callback and fields are None
     if structure_callback is None and fields is None:
         inferred_fields = infer_fields(source_df)
@@ -917,8 +956,29 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
     if structure_callback is not None and fields is None:
         raise ValueError("fields parameter is required when structure_callback is provided")
 
-    # Validate that all specified fields exist in source_df
-    missing_fields = [field for field in fields if field not in source_df.columns]
+    # A derived field is one of the scored fields, so a name outside 'fields' exempts
+    # nothing — that is a caller mistake (typically a typo), not a feature.
+    unknown_derived_fields = [field for field in derived_fields if field not in fields]
+    if unknown_derived_fields:
+        raise ValueError(
+            f"The following derived_fields are not in fields: {unknown_derived_fields}. "
+            "derived_fields must be a subset of fields (they are scored fields whose column "
+            "the comparison_callback creates)"
+        )
+
+    # A derived field exists only because the comparison_callback writes it, so without a
+    # callback nothing would ever create the column.
+    if derived_fields and comparison_callback is None:
+        raise ValueError(
+            f"derived_fields {list(derived_fields)} require a comparison_callback to create "
+            "them; with comparison_callback=None nothing adds those columns"
+        )
+
+    # Validate that all specified fields exist in source_df. Derived fields are exempt: the
+    # comparison_callback creates them during scoring, so there is no input column to find
+    # (compare_results_all already tolerates a scored field that is not yet a column).
+    missing_fields = [field for field in fields
+                      if field not in source_df.columns and field not in derived_fields]
     if missing_fields:
         raise ValueError(f"The following fields are missing from source_df: {missing_fields}")
 
@@ -951,6 +1011,17 @@ def validate(source_df, fields, structure_callback, output_folder=None, drop_col
     ###################################
     # Analyse the results and calculate the metrics
     res_df = compare_results_all(res_df, fields, hierarchy=hierarchy, comparison_callback=comparison_callback, raw_text_column_name=raw_text_column_name)
+
+    # Scoring is done, so a declared derived field must exist by now. Report it here:
+    # get_metrics reads field_df[field] unguarded, so an undelivered derived field would
+    # otherwise surface as a bare `KeyError: '<field>'` from deep inside it.
+    undelivered_derived_fields = [field for field in derived_fields if field not in res_df.columns]
+    if undelivered_derived_fields:
+        raise ValueError(
+            f"The following derived_fields are still missing after comparison: "
+            f"{undelivered_derived_fields}. They were exempted from the source_df column "
+            "check because comparison_callback was expected to create them during scoring"
+        )
 
     # Save results
     if output_folder:
