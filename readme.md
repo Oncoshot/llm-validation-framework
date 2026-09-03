@@ -108,7 +108,7 @@ results_df, metrics_df = validate(
 
 ### DataFrame Format
 - **Unique index** - Each row must have a unique identifier (e.g., "Patient ID")
-- **Label columns** - Ground truth values for each field you want to validate
+- **Label columns** - Ground truth values for each field you want to validate (unless the field is declared in `derived_fields` — see [Derived fields](#derived-fields-scored-but-not-an-input-column))
 - **Result columns** (Mode 1 only) - LLM predictions as `Res: {Field Name}` columns
 - **Raw text column** (Mode 2 only) - Source text for LLM inference (e.g., "medical_report")
 
@@ -352,6 +352,47 @@ The final row contains bootstrap parameters for reference: sample size (N) and c
 - **Publication**: Report confidence intervals alongside point estimates
 
 ## 🛠️ Advanced Configuration
+
+### Derived Fields (scored, but not an input column)
+
+Every name in `fields` must normally be a column in `source_df` — that check is what catches a
+misspelled field name. But `fields` conflates two things: *the column holding the labels* and
+*the name of the thing being scored*. They usually coincide, and sometimes they don't: a
+`comparison_callback` can derive what it scores from a **different** column and write the field
+plus its own counts onto the row. Such a field has no input column to require.
+
+Declare those names in `derived_fields` to exempt them from the check (and only them):
+
+```python
+def comparison_callback(row, i, raw_text_column_name):
+    # gold labels live in 'labels'; the scored 'spans' field is derived from them here
+    golden_spans = spans_from(row["labels"])
+    row["spans"] = golden_spans
+    row["TP: spans"] = ...
+    row["FP: spans"] = ...
+    row["FN: spans"] = ...
+
+results_df, metrics_df = validate(
+    source_df=df,                      # has a 'labels' column, but no 'spans' column
+    fields=["spans"],
+    structure_callback=my_callback,
+    comparison_callback=comparison_callback,
+    derived_fields=("spans",),         # 'spans' is created during scoring, not read from input
+)
+```
+
+Default `()` means no derived fields — every scored field must be an input column, as before.
+Each rule fails fast with a clear message:
+
+| Situation | Result |
+|-----------|--------|
+| Derived field absent from `source_df` | ✅ accepted — the callback creates it |
+| Derived field **present** in `source_df` anyway (e.g. a legacy column of `[]` placeholders) | ✅ accepted, no warning — behaves exactly as before |
+| A scored field that is neither in `source_df` nor declared derived | ❌ `ValueError` — the original missing-column error, unchanged |
+| A name in `derived_fields` that is not in `fields` | ❌ `ValueError` — it exempts nothing; usually a typo |
+| Non-empty `derived_fields` with `comparison_callback=None` | ❌ `ValueError` — nothing would create the column |
+| A bare string (`derived_fields="spans"`) | ❌ `TypeError` — rather than iterating its characters |
+| Declared derived field still missing after scoring | ❌ `ValueError` naming it — rather than a bare `KeyError` from inside the metrics step |
 
 ### Parallel Processing
 ```python

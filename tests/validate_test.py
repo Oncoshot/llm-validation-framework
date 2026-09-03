@@ -949,3 +949,210 @@ def test_reorder_result_columns():
     assert drugs_comment_idx == drugs_correct_idx + 1, "Related columns should be consecutive"
     
     print("✓ All tests passed! Column reordering works correctly.")
+
+# --- derived_fields: a scored field the comparison_callback creates -------------------
+# Mirrors the real consumer shape: the gold labels live in a 'labels' column, the model
+# output arrives as 'Res: predicted spans', and the comparison_callback derives the scored
+# 'spans' field from 'labels' and writes its own TP:/FP:/FN: counts. Nothing ever supplies
+# a 'spans' column, which is exactly what validate()'s missing-column guard used to reject.
+
+_SPAN_CASES = [
+    {'labels': ['a', 'b'], 'predicted': ['a', 'b']},  # 2 hits
+    {'labels': ['c', 'd'], 'predicted': ['c', 'x']},  # 1 hit, 1 spurious, 1 missed
+    {'labels': ['e'],      'predicted': []},          # 1 missed
+]
+
+# TP=3, FP=1, FN=2 pooled over the three cases
+_SPAN_PRECISION = 3 / 4
+_SPAN_RECALL = 3 / 5
+
+
+def _span_structure_callback(row, i, raw_text_column_name):
+    """Emits only the model output ('Res: predicted spans'). It deliberately never emits
+    'Res: spans', so the built-in scoring path has nothing to score for the derived field —
+    the comparison_callback owns it end to end."""
+    return {'predicted spans': _SPAN_CASES[i]['predicted']}, {}
+
+
+def _span_comparison_callback(row, i, raw_text_column_name):
+    """Derives the scored field from the label column and scores it itself, the way a
+    consumer with its own span matching does."""
+    golden_spans = list(row['labels'])
+    predicted = list(row['Res: predicted spans'])
+    row['spans'] = golden_spans
+    row['TP: spans'] = len([s for s in predicted if s in golden_spans])
+    row['FP: spans'] = len([s for s in predicted if s not in golden_spans])
+    row['FN: spans'] = len([s for s in golden_spans if s not in predicted])
+
+
+def _span_source_df(with_placeholder_column=False):
+    src = pd.DataFrame({
+        'labels': [c['labels'] for c in _SPAN_CASES],
+        'raw_text': [f'text {i}' for i in range(len(_SPAN_CASES))],
+    })
+    if with_placeholder_column:
+        # the workaround derived_fields removes: a meaningless column of [] placeholders,
+        # hand-added purely to satisfy the missing-column guard
+        src['spans'] = [[] for _ in _SPAN_CASES]
+    return src
+
+
+def _assert_span_metrics(res_df, metrics_df):
+    """The derived field must be scored for real, not merely present in the frame."""
+    def _agg(name):
+        return metrics_df.loc[metrics_df.field == 'spans', name].iloc[0]
+
+    # the callback created both the field and its counts
+    assert 'spans' in res_df.columns
+    assert res_df.loc[0, 'spans'] == ['a', 'b']
+    assert res_df.loc[0, 'TP: spans'] == 2
+    assert res_df.loc[1, 'FP: spans'] == 1
+    assert res_df.loc[2, 'FN: spans'] == 1
+
+    # get_metrics took the binary TP:/FP:/FN: branch and aggregated the callback's counts
+    assert _agg('labeled cases') == 3
+    assert _agg('field-present cases') == 3
+    assert _agg('TP') == 3
+    assert _agg('FP') == 1
+    assert _agg('FN') == 2
+    assert _agg('precision (micro)') == pytest.approx(_SPAN_PRECISION)
+    assert _agg('recall (micro)') == pytest.approx(_SPAN_RECALL)
+    assert _agg('F1 score (micro)') == pytest.approx(
+        2 * _SPAN_PRECISION * _SPAN_RECALL / (_SPAN_PRECISION + _SPAN_RECALL)
+    )
+
+
+def test_validate_derived_field_absent_from_source():
+    """A field declared in derived_fields need not be a column in source_df: the
+    comparison_callback creates it during scoring, and the run completes with real metrics
+    for it. Without derived_fields this raised 'The following fields are missing from
+    source_df', before the callback ever ran."""
+    src = _span_source_df()
+    assert 'spans' not in src.columns
+
+    res_df, metrics_df = v.validate(
+        source_df=src,
+        fields=['spans'],
+        structure_callback=_span_structure_callback,
+        output_folder=None,
+        raw_text_column_name='raw_text',
+        comparison_callback=_span_comparison_callback,
+        derived_fields=('spans',),
+    )
+
+    _assert_span_metrics(res_df, metrics_df)
+
+
+def test_validate_derived_field_present_as_placeholder_column():
+    """Back-compat: a derived field that IS present in source_df (the historical workaround
+    of a column full of [] placeholders) is accepted with no error and no warning, and
+    scores identically to the absent case for an equivalent callback."""
+    src_placeholder = _span_source_df(with_placeholder_column=True)
+    assert 'spans' in src_placeholder.columns
+
+    res_df, metrics_df = v.validate(
+        source_df=src_placeholder,
+        fields=['spans'],
+        structure_callback=_span_structure_callback,
+        output_folder=None,
+        raw_text_column_name='raw_text',
+        comparison_callback=_span_comparison_callback,
+        derived_fields=('spans',),
+    )
+
+    _assert_span_metrics(res_df, metrics_df)
+
+    # ---- and the metrics are the same frame as the no-placeholder-column run ----
+    _, metrics_without_column = v.validate(
+        source_df=_span_source_df(),
+        fields=['spans'],
+        structure_callback=_span_structure_callback,
+        output_folder=None,
+        raw_text_column_name='raw_text',
+        comparison_callback=_span_comparison_callback,
+        derived_fields=('spans',),
+    )
+    pd.testing.assert_frame_equal(metrics_df, metrics_without_column)
+
+
+def test_validate_derived_field_not_in_fields():
+    """Declaring a derived field that is not among the scored 'fields' exempts nothing —
+    it is a caller mistake (usually a typo), not a feature."""
+    with pytest.raises(ValueError, match="derived_fields are not in fields"):
+        v.validate(
+            source_df=_span_source_df(),
+            fields=['labels'],
+            structure_callback=_span_structure_callback,
+            output_folder=None,
+            raw_text_column_name='raw_text',
+            comparison_callback=_span_comparison_callback,
+            derived_fields=('spans',),
+        )
+
+
+def test_validate_derived_fields_require_comparison_callback():
+    """Without a comparison_callback nothing would ever create the derived column, so say
+    so up front instead of failing later."""
+    with pytest.raises(ValueError, match="require a comparison_callback"):
+        v.validate(
+            source_df=_span_source_df(),
+            fields=['spans'],
+            structure_callback=_span_structure_callback,
+            output_folder=None,
+            raw_text_column_name='raw_text',
+            comparison_callback=None,
+            derived_fields=('spans',),
+        )
+
+
+def test_validate_derived_fields_rejects_bare_string():
+    """A bare string would iterate into single characters ('spans' -> 's','p','a',...) and
+    silently exempt names nobody declared, so it is a TypeError."""
+    with pytest.raises(TypeError, match="not a single string"):
+        v.validate(
+            source_df=_span_source_df(),
+            fields=['spans'],
+            structure_callback=_span_structure_callback,
+            output_folder=None,
+            raw_text_column_name='raw_text',
+            comparison_callback=_span_comparison_callback,
+            derived_fields='spans',
+        )
+
+
+def test_validate_missing_non_derived_field_still_rejected():
+    """derived_fields narrows the missing-column guard, it does not disable it: a scored
+    field that is neither in source_df nor declared derived still raises the original error
+    with its original message. That guard is what catches a misspelled field name."""
+    with pytest.raises(
+        ValueError,
+        match=r"^The following fields are missing from source_df: \['typo'\]$",
+    ):
+        v.validate(
+            source_df=_span_source_df(),
+            fields=['spans', 'typo'],
+            structure_callback=_span_structure_callback,
+            output_folder=None,
+            raw_text_column_name='raw_text',
+            comparison_callback=_span_comparison_callback,
+            derived_fields=('spans',),
+        )
+
+
+def test_validate_derived_field_not_created_by_callback():
+    """A comparison_callback that does not deliver a declared derived field gets a clear
+    ValueError naming it — not the bare `KeyError: 'spans'` that get_metrics would raise
+    from field_df[field].count()."""
+    def _callback_that_forgets(row, i, raw_text_column_name):
+        row['something else'] = 1  # never writes 'spans'
+
+    with pytest.raises(ValueError, match="derived_fields are still missing after comparison"):
+        v.validate(
+            source_df=_span_source_df(),
+            fields=['spans'],
+            structure_callback=_span_structure_callback,
+            output_folder=None,
+            raw_text_column_name='raw_text',
+            comparison_callback=_callback_that_forgets,
+            derived_fields=('spans',),
+        )
