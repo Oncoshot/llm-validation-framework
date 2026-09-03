@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-09-03)
+
+### Features
+
+- Let a comparison_callback create the field it scores (ONC-12684)
+  ([`e77d8cb`](https://github.com/Oncoshot/llm-validation-framework/commit/e77d8cbc62b0e460d4499f412ce3e0d9085a4648))
+
+
 ## v1.2.0 (2026-08-24)
 
 ### Bug Fixes
